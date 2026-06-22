@@ -1,0 +1,36 @@
+build:
+  maxIssues: 0
+
+config:
+  validation: true
+
+complexity:
+  LongMethod:
+    active: true
+    threshold: 80
+    ignoreAnnotated: ['Composable']
+  LongParameterList:
+    active: true
+    functionThreshold: 8
+    ignoreAnnotated: ['Composable']
+  TooManyFunctions:
+    active: true
+    thresholdInClasses: 15
+
+style:
+  ReturnCount:
+    active: false
+  MagicNumber:
+    active: true
+    ignoreNumbers: ['-1', '0', '1', '2', '500', '1000', '16f', '340']
+    ignorePropertyDeclaration: true
+    ignoreAnnotation: true
+  MaxLineLength:
+    active: false
+  UseCheckOrError:
+    active: false
+
+naming:
+  FunctionNaming:
+    active: true
+    ignoreAnnotated: ['Composable']

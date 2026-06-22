@@ -1,0 +1,3 @@
+# Copy to local.properties (not committed):
+# sdk.dir=/path/to/Android/sdk
+# MAPS_API_KEY=your_google_maps_key
