@@ -1,9 +1,6 @@
 package com.vctrch.golfgps.data.remote
 
-import com.vctrch.golfgps.domain.GolfCourseSummary
-import com.vctrch.golfgps.domain.GolfDataError
-import com.vctrch.golfgps.domain.GolfDataException
-import com.vctrch.golfgps.domain.ScorecardHole
+import com.vctrch.golfgps.domain.*
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get

@@ -1,8 +1,6 @@
 package com.vctrch.golfgps.data.remote
 
-import com.vctrch.golfgps.domain.GeoMath
-import com.vctrch.golfgps.domain.HoleTargetSource
-import com.vctrch.golfgps.domain.ScorecardHole
+import com.vctrch.golfgps.domain.*
 import com.vctrch.golfgps.testing.TestFixtures
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull

@@ -1,9 +1,7 @@
 package com.vctrch.golfgps.testing
 
 import com.vctrch.golfgps.data.remote.OsmGolfSource
-import com.vctrch.golfgps.domain.HoleTarget
-import com.vctrch.golfgps.domain.LatLng
-import com.vctrch.golfgps.domain.ScorecardHole
+import com.vctrch.golfgps.domain.*
 
 class FakeOsmGolfSource(
     var holes: List<HoleTarget> = emptyList(),

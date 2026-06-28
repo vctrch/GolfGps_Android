@@ -1,10 +1,6 @@
 package com.vctrch.golfgps.data.remote
 
-import com.vctrch.golfgps.domain.GeoMath
-import com.vctrch.golfgps.domain.HoleTarget
-import com.vctrch.golfgps.domain.HoleTargetSource
-import com.vctrch.golfgps.domain.LatLng
-import com.vctrch.golfgps.domain.ScorecardHole
+import com.vctrch.golfgps.domain.*
 
 /**
  * Turns raw OpenStreetMap golf geometry (Overpass elements) into per-hole [HoleTarget]s with real

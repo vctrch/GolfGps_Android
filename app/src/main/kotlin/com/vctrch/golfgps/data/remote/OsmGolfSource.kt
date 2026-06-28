@@ -1,9 +1,6 @@
 package com.vctrch.golfgps.data.remote
 
-import com.vctrch.golfgps.domain.GeoMath
-import com.vctrch.golfgps.domain.HoleTarget
-import com.vctrch.golfgps.domain.LatLng
-import com.vctrch.golfgps.domain.ScorecardHole
+import com.vctrch.golfgps.domain.*
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.timeout
