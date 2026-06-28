@@ -10,12 +10,14 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logging
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
-import retrofit2.Retrofit
-import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import javax.inject.Singleton
 
 @Module
@@ -31,45 +33,36 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
-        val logging =
-            HttpLoggingInterceptor().apply {
-                level =
-                    if (BuildConfig.DEBUG) {
-                        HttpLoggingInterceptor.Level.BASIC
-                    } else {
-                        HttpLoggingInterceptor.Level.NONE
-                    }
+    fun provideHttpClient(json: Json): HttpClient {
+        return HttpClient(OkHttp) {
+            expectSuccess = true
+            install(ContentNegotiation) {
+                json(json)
             }
-        return OkHttpClient.Builder()
-            .addInterceptor(logging)
-            .build()
+            install(Logging) {
+                level = if (BuildConfig.DEBUG) LogLevel.INFO else LogLevel.NONE
+            }
+            // Overpass queries run with a server-side `[timeout:25]`, and free instances are often
+            // slow, so the client must wait longer than the OkHttp engine's ~10s default or every
+            // OSM enrichment silently times out.
+            install(HttpTimeout) {
+                connectTimeoutMillis = 15_000
+                requestTimeoutMillis = 35_000
+                socketTimeoutMillis = 35_000
+            }
+        }
     }
 
     @Provides
     @Singleton
-    fun provideRetrofit(
-        json: Json,
-        okHttpClient: OkHttpClient,
-    ): Retrofit {
-        val contentType = "application/json".toMediaType()
-        return Retrofit.Builder()
-            .baseUrl(BuildConfig.OPENGOLF_BASE_URL)
-            .client(okHttpClient)
-            .addConverterFactory(json.asConverterFactory(contentType))
-            .build()
+    fun provideOpenGolfApi(client: HttpClient): OpenGolfApi {
+        return KtorOpenGolfApi(client, BuildConfig.OPENGOLF_BASE_URL)
     }
 
     @Provides
     @Singleton
-    fun provideOpenGolfApiService(retrofit: Retrofit): OpenGolfApiService {
-        return retrofit.create(OpenGolfApiService::class.java)
-    }
-
-    @Provides
-    @Singleton
-    fun provideOpenGolfApi(service: OpenGolfApiService): OpenGolfApi {
-        return OpenGolfApiClient(service)
+    fun provideOsmGolfSource(client: HttpClient): OsmGolfSource {
+        return OverpassGolfSource(client)
     }
 
     @Provides
@@ -78,7 +71,7 @@ object AppModule {
         @ApplicationContext context: Context,
     ): GolfGpsDatabase {
         return Room.databaseBuilder(context, GolfGpsDatabase::class.java, "GolfGpsCache")
-            .fallbackToDestructiveMigration()
+            .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
     }
 

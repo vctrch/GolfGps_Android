@@ -2,6 +2,8 @@ package com.vctrch.golfgps.feature.round
 
 import com.vctrch.golfgps.data.local.*
 import com.vctrch.golfgps.data.repository.CourseRepository
+import com.vctrch.golfgps.domain.HoleTargetSource
+import com.vctrch.golfgps.domain.LatLng
 import com.vctrch.golfgps.location.LocationRepository
 import com.vctrch.golfgps.testing.*
 import io.mockk.every
@@ -29,6 +31,7 @@ import org.junit.Test
 class RoundViewModelTest {
     private lateinit var dispatcher: TestDispatcher
     private lateinit var api: FakeOpenGolfApi
+    private lateinit var osm: FakeOsmGolfSource
     private lateinit var repository: CourseRepository
     private lateinit var locationRepository: LocationRepository
 
@@ -37,9 +40,11 @@ class RoundViewModelTest {
         dispatcher = StandardTestDispatcher()
         Dispatchers.setMain(dispatcher)
         api = FakeOpenGolfApi()
+        osm = FakeOsmGolfSource()
         repository =
             CourseRepository(
                 api,
+                osm,
                 CourseDataCache(InMemoryCachedCourseDao(), Json { ignoreUnknownKeys = true }),
             )
         locationRepository = mockk(relaxed = true)
@@ -107,6 +112,30 @@ class RoundViewModelTest {
             assertTrue(viewModel.uiState.value.isRoundReady)
             assertEquals(loaded.summary, viewModel.uiState.value.loadedCourse?.summary)
             assertFalse(viewModel.uiState.value.isLoadingCourse)
+        }
+
+    @Test
+    fun selectCourse_enrichesGreensFromOsmInBackground() =
+        runTest(dispatcher) {
+            val viewModel = createViewModel()
+            val loaded = TestFixtures.loadedCourse()
+            api.loadResult = loaded.summary to loaded.scorecard
+            val osmGreen = LatLng(40.0, -80.0)
+            osm.holes =
+                listOf(
+                    TestFixtures.holeTarget(
+                        number = 1,
+                        source = HoleTargetSource.OPEN_STREET_MAP,
+                        green = osmGreen,
+                    ),
+                )
+
+            viewModel.selectCourse(loaded.summary)
+            advanceUntilIdle()
+
+            val hole1 = viewModel.uiState.value.loadedCourse?.holes?.first { it.number == 1 }
+            assertEquals(osmGreen, hole1?.green)
+            assertEquals(HoleTargetSource.OPEN_STREET_MAP, hole1?.source)
         }
 
     @Test

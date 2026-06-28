@@ -101,7 +101,7 @@ private fun MapStylePicker(
             onClick = { expanded = true },
             label = { Text(mapDisplayStyle.title) },
             leadingIcon = { Icon(Icons.Default.Layers, contentDescription = null) },
-            modifier = Modifier.menuAnchor(),
+            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
         )
         ExposedDropdownMenu(
             expanded = expanded,

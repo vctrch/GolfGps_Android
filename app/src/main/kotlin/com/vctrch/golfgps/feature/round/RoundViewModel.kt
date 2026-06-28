@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -52,7 +53,7 @@ class RoundViewModel
     constructor(
         private val courseRepository: CourseRepository,
         private val userPreferencesRepository: UserPreferencesRepository,
-        locationRepository: LocationRepository,
+        private val locationRepository: LocationRepository,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(RoundUiState())
         val uiState: StateFlow<RoundUiState> = _uiState.asStateFlow()
@@ -66,17 +67,36 @@ class RoundViewModel
 
         private var searchJob: Job? = null
         private var activeSearchId = 0
+        private var locationJob: Job? = null
 
         init {
-            viewModelScope.launch {
-                locationRepository.locationUpdates().collect { location ->
-                    _uiState.update { it.copy(userLocation = location) }
+            observeLocation()
+        }
+
+        /**
+         * Re-subscribes to location updates. Called once on creation and again after the location
+         * permission is granted, because the initial subscription emits nothing until permission
+         * exists.
+         */
+        fun refreshLocationUpdates() {
+            observeLocation()
+        }
+
+        private fun observeLocation() {
+            locationJob?.cancel()
+            locationJob =
+                viewModelScope.launch {
+                    locationRepository
+                        .locationUpdates()
+                        .catch { /* Ignore location errors (e.g. permission revoked); keep last fix. */ }
+                        .collect { location ->
+                            _uiState.update { it.copy(userLocation = location) }
+                        }
                 }
-            }
         }
 
         fun onSearchQueryChange(query: String) {
-            _uiState.update { it.copy(searchQuery = query) }
+            _uiState.update { it.copy(searchQuery = query, courseLoadError = null) }
             scheduleSearch()
         }
 
@@ -90,7 +110,21 @@ class RoundViewModel
                     it.copy(isLoadingCourse = true, courseLoadError = null, errorMessage = null)
                 }
                 try {
-                    val loaded = courseRepository.loadCourseBasics(course.id)
+                    var loaded = courseRepository.loadCourseBasics(course)
+                    // The scorecard may carry no holes; OSM might still have them, so try enriching
+                    // before deciding there is nothing to show.
+                    if (loaded.holes.isEmpty()) {
+                        loaded = courseRepository.enrichWithOsmGreens(loaded) ?: loaded
+                    }
+                    if (loaded.holes.isEmpty()) {
+                        _uiState.update {
+                            it.copy(
+                                isLoadingCourse = false,
+                                courseLoadError = "No hole data is available for this course yet.",
+                            )
+                        }
+                        return@launch
+                    }
                     _uiState.update {
                         it.copy(
                             isLoadingCourse = false,
@@ -98,12 +132,31 @@ class RoundViewModel
                             selectedHoleNumber = loaded.holes.firstOrNull()?.number ?: 1,
                         )
                     }
+                    enrichGreens(loaded)
                 } catch (_: Exception) {
                     _uiState.update {
                         it.copy(
                             isLoadingCourse = false,
                             courseLoadError = "Couldn't load course. Check your connection and try again.",
                         )
+                    }
+                }
+            }
+        }
+
+        /**
+         * Fetches real per-hole greens from OpenStreetMap in the background and swaps them into the
+         * already-open round, so the map and yardages stop pointing at the course center. No-op when
+         * OSM has nothing for this course (the scorecard fallback stays in place).
+         */
+        private fun enrichGreens(loaded: LoadedCourse) {
+            viewModelScope.launch {
+                val enriched = runCatching { courseRepository.enrichWithOsmGreens(loaded) }.getOrNull() ?: return@launch
+                _uiState.update { state ->
+                    if (state.loadedCourse?.summary?.id == enriched.summary.id) {
+                        state.copy(loadedCourse = enriched)
+                    } else {
+                        state
                     }
                 }
             }

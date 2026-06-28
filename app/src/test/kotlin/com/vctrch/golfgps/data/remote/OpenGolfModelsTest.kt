@@ -56,13 +56,13 @@ class OpenGolfModelsTest {
         val detail =
             OpenGolfCourseDetail(
                 id = "abc",
-                latitude = 36.0,
-                longitude = -121.0,
-                scorecard =
+                lat = 36.0,
+                lng = -121.0,
+                holesData =
                     listOf(
-                        OpenGolfScorecardRow(holeNumber = 2, par = 5),
-                        OpenGolfScorecardRow(holeNumber = null, par = 4),
-                        OpenGolfScorecardRow(holeNumber = 1, par = 4),
+                        OpenGolfHole(number = 2, par = 5),
+                        OpenGolfHole(number = null, par = 4),
+                        OpenGolfHole(number = 1, par = 4),
                     ),
             )
 

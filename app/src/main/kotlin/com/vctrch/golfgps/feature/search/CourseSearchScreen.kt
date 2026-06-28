@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vctrch.golfgps.domain.GolfCourseSummary
 import com.vctrch.golfgps.feature.round.RoundUiState
+import com.vctrch.golfgps.feature.support.SupportDeveloperCard
 import com.vctrch.golfgps.ui.theme.GolfTheme
 
 @Composable
@@ -31,6 +32,7 @@ fun CourseSearchScreen(
         modifier =
             modifier
                 .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(horizontal = 20.dp, vertical = 16.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -81,6 +83,11 @@ fun CourseSearchScreen(
             Text(message, color = MaterialTheme.colorScheme.error)
         }
 
+        state.courseLoadError?.let { message ->
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(message, color = MaterialTheme.colorScheme.error)
+        }
+
         when {
             state.isSearchActive -> {
                 SearchResultsSection(
@@ -91,7 +98,8 @@ fun CourseSearchScreen(
             }
             else -> {
                 SearchEmptyState(modifier = Modifier.weight(1f))
-                SupportCardPlaceholder()
+                Spacer(modifier = Modifier.height(16.dp))
+                SupportDeveloperCard()
             }
         }
     }
@@ -170,28 +178,6 @@ private fun CourseResultCard(
             if (course.holesCount != null && course.parTotal != null) {
                 Text("${course.holesCount} holes · Par ${course.parTotal}", style = MaterialTheme.typography.labelLarge)
             }
-        }
-    }
-}
-
-@Composable
-private fun SupportCardPlaceholder() {
-    Spacer(modifier = Modifier.height(16.dp))
-    Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-    ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                "Support Golf GPS",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = GolfTheme.Fairway,
-            )
-            Text(
-                "Golf GPS is free! Optional tips via Google Play Billing can be added in a follow-up.",
-                style = MaterialTheme.typography.bodyMedium,
-            )
         }
     }
 }

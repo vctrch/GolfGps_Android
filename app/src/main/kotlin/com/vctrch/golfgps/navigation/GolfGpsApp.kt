@@ -23,8 +23,8 @@ import com.vctrch.golfgps.ui.theme.GolfGpsTheme
 @Composable
 fun GolfGpsApp() {
     GolfGpsTheme {
-        RequestLocationPermissionOnLaunch()
         val viewModel: RoundViewModel = hiltViewModel()
+        RequestLocationPermissionOnLaunch(onPermissionGranted = viewModel::refreshLocationUpdates)
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         val mapDisplayStyle by viewModel.mapDisplayStyle.collectAsStateWithLifecycle()
 
@@ -58,12 +58,14 @@ fun GolfGpsApp() {
 }
 
 @Composable
-private fun RequestLocationPermissionOnLaunch() {
+private fun RequestLocationPermissionOnLaunch(onPermissionGranted: () -> Unit) {
     val context = LocalContext.current
     val launcher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestMultiplePermissions(),
-            onResult = { },
+            onResult = { results ->
+                if (results.values.any { it }) onPermissionGranted()
+            },
         )
 
     LaunchedEffect(Unit) {
@@ -73,7 +75,9 @@ private fun RequestLocationPermissionOnLaunch() {
         val coarseGranted =
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
                 PackageManager.PERMISSION_GRANTED
-        if (!fineGranted || !coarseGranted) {
+        if (fineGranted || coarseGranted) {
+            onPermissionGranted()
+        } else {
             launcher.launch(
                 arrayOf(
                     Manifest.permission.ACCESS_FINE_LOCATION,

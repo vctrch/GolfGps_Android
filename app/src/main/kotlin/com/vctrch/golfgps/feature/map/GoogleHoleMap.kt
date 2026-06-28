@@ -1,7 +1,9 @@
 package com.vctrch.golfgps.feature.map
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
@@ -25,6 +27,11 @@ fun GoogleHoleMap(
         rememberCameraPositionState {
             position = CameraPosition.fromLatLngZoom(green, 16f)
         }
+
+    // Recenter when the selected hole's green changes (the init block above only runs once).
+    LaunchedEffect(green) {
+        camera.animate(CameraUpdateFactory.newLatLngZoom(green, 16f))
+    }
 
     GoogleMap(
         modifier = modifier,

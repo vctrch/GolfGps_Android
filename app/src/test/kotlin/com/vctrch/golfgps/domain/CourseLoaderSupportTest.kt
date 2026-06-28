@@ -33,4 +33,18 @@ class CourseLoaderSupportTest {
         assertEquals(2, holes[1].number)
         assertEquals(5, holes[1].par)
     }
+
+    @Test
+    fun fallbackHoles_synthesizesHolesFromCountWhenScorecardEmpty() {
+        val summary = TestFixtures.summary(latitude = 33.1, longitude = -117.2)
+
+        val holes = CourseLoaderSupport.fallbackHoles(emptyList(), summary)
+
+        assertEquals(18, holes.size)
+        assertEquals(listOf(1, 18), listOf(holes.first().number, holes.last().number))
+        holes.forEach { hole ->
+            assertEquals(LatLng(33.1, -117.2), hole.green)
+            assertEquals(HoleTargetSource.SCORECARD_FALLBACK, hole.source)
+        }
+    }
 }

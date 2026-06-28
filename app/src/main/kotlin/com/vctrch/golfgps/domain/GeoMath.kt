@@ -22,6 +22,11 @@ object GeoMath {
         return (meters / METERS_PER_YARD).roundToInt()
     }
 
+    fun meters(
+        from: LatLng,
+        to: LatLng,
+    ): Double = haversineMeters(from, to)
+
     fun centroid(coordinates: List<LatLng>): LatLng? {
         if (coordinates.isEmpty()) return null
         val lat = coordinates.sumOf { it.latitude } / coordinates.size
