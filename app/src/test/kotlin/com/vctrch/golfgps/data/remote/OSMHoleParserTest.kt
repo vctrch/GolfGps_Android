@@ -36,6 +36,45 @@ class OSMHoleParserTest {
     }
 
     @Test
+    fun snapsGreenToNearestUnnumberedGreenPolygonCentre() {
+        val tee = TestFixtures.sampleOrigin
+        // Hole centreline stops at the green's front edge, 15 yds short of the green's centre.
+        val centrelineEnd = TestFixtures.offset(northYards = 150.0)
+        val greenCentre = TestFixtures.offset(northYards = 165.0)
+        // An unnumbered (no `ref`) green polygon around the centre — the common OSM case.
+        val corners =
+            listOf(
+                TestFixtures.offset(northYards = 160.0, eastYards = -5.0),
+                TestFixtures.offset(northYards = 160.0, eastYards = 5.0),
+                TestFixtures.offset(northYards = 170.0, eastYards = 5.0),
+                TestFixtures.offset(northYards = 170.0, eastYards = -5.0),
+            )
+        val greenPolygon =
+            OverpassElement(
+                type = "way",
+                id = 999,
+                tags = mapOf("golf" to "green"),
+                geometry = corners.map { OverpassNode(it.latitude, it.longitude) },
+            )
+        val holeWay =
+            TestFixtures.overpassHoleElement(
+                1,
+                tee.latitude,
+                tee.longitude,
+                centrelineEnd.latitude,
+                centrelineEnd.longitude,
+            )
+        val elements = listOf(holeWay, greenPolygon)
+
+        val holes = OSMHoleParser.holeTargets(elements, listOf(ScorecardHole(1, 4, null)), center)
+
+        assertEquals(1, holes.size)
+        // The green should snap to the polygon centre (~165 yds), not stop at the centreline end (150 yds).
+        assertTrue(GeoMath.yards(center, holes[0].green) > GeoMath.yards(center, centrelineEnd))
+        assertTrue(GeoMath.yards(holes[0].green, greenCentre) <= 3)
+    }
+
+    @Test
     fun reversesWayDirectionWhenEndpointsAreFlipped() {
         val tee = TestFixtures.sampleTee
         val green = TestFixtures.sampleGreen

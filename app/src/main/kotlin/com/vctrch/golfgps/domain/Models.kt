@@ -45,6 +45,30 @@ data class HoleTarget(
         val teeCoordinate = tee ?: return null
         return GeoMath.yards(teeCoordinate, green)
     }
+
+    /**
+     * True when [location] is plausibly on this hole. With a tee, the fix must be within the hole's
+     * own length (plus a buffer) of both the tee and the green; without one, just close to the green.
+     * Used to suppress misleading yardages/markers when the GPS fix is far from the hole (e.g. an
+     * emulator's default location).
+     */
+    fun isPlayerOnHole(location: LatLng): Boolean {
+        val teeCoordinate = tee
+        if (teeCoordinate == null) {
+            return GeoMath.yards(location, green) <= ON_HOLE_NO_TEE_YARDS
+        }
+        val limit = GeoMath.yards(teeCoordinate, green) + ON_HOLE_BUFFER_YARDS
+        return GeoMath.yards(location, green) <= limit && GeoMath.yards(location, teeCoordinate) <= limit
+    }
+
+    /** Player-to-green yardage, but only when the fix is on this hole (else null). */
+    fun playerYardsToGreen(location: LatLng): Int? =
+        if (isPlayerOnHole(location)) GeoMath.yards(location, green) else null
+
+    private companion object {
+        const val ON_HOLE_BUFFER_YARDS = 150
+        const val ON_HOLE_NO_TEE_YARDS = 450
+    }
 }
 
 data class LoadedCourse(
