@@ -12,7 +12,10 @@ object OSMHoleParser {
     private const val MIN_HOLE_LENGTH_YARDS = 40
     private const val MAX_HOLE_LENGTH_YARDS = 900
     private const val MAX_GREEN_DISTANCE_FROM_COURSE_YARDS = 3_500
-    private const val UNNUMBERED_GREEN_MATCH_YARDS = 450
+
+    // A hole's centreline endpoint sits on or beside its green, so only snap to a green centre that
+    // is close. Kept tight to avoid grabbing an adjacent hole's green when one is missing in OSM.
+    private const val UNNUMBERED_GREEN_MATCH_YARDS = 70
 
     private data class RawHole(
         val number: Int,
@@ -354,7 +357,14 @@ object OSMHoleParser {
     ): LatLng {
         pins.firstOrNull { it.number == holeNumber }?.let { return it.coordinate }
         greens.firstOrNull { it.number == holeNumber }?.let { return it.coordinate }
-        return orientedGreen
+        // OSM green polygons are usually unnumbered, so match by proximity to the hole centreline's
+        // end and snap to the green's centre. Golfers expect "yards to the middle of the green", not
+        // to wherever the hole way happens to stop (frequently the green's front edge).
+        val nearestGreen =
+            greens
+                .minByOrNull { GeoMath.meters(orientedGreen, it.coordinate) }
+                ?.takeIf { GeoMath.yards(orientedGreen, it.coordinate) <= UNNUMBERED_GREEN_MATCH_YARDS }
+        return nearestGreen?.coordinate ?: orientedGreen
     }
 
     /** Fills scorecard holes missing from OSM (e.g. Salina CC has fairways 5 and 8 but not 6-7). */

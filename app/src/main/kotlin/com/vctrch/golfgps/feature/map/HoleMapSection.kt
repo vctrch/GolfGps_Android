@@ -43,6 +43,7 @@ fun HoleMapSection(
             MapBackend.OPEN_STREET_MAP ->
                 OsmHoleMap(
                     hole = hole,
+                    userLocation = userLocation,
                     mapDisplayStyle = mapDisplayStyle,
                     modifier = Modifier.fillMaxSize(),
                 )

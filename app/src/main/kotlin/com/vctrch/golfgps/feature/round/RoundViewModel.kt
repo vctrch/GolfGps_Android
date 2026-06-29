@@ -39,7 +39,7 @@ data class RoundUiState(
     fun distanceToGreen(): Int? {
         val hole = currentHole ?: return null
         val location = userLocation ?: return null
-        return GeoMath.yards(location, hole.green)
+        return hole.playerYardsToGreen(location)
     }
 
     companion object {

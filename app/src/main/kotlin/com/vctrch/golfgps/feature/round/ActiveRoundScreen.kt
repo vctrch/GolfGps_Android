@@ -90,13 +90,34 @@ private fun YardageHero(
                 color = MaterialTheme.colorScheme.onPrimary,
                 style = MaterialTheme.typography.titleMedium,
             )
-            val yards = state.distanceToGreen()
+            val liveYards = state.distanceToGreen()
+            val holeLength = hole.holeLengthYards()
+            val headline =
+                when {
+                    liveYards != null -> "${GeoMath.formattedYardage(liveYards)} yds to green"
+                    holeLength != null -> "${GeoMath.formattedYardage(holeLength)} yds"
+                    else -> "Waiting for GPS"
+                }
             Text(
-                text = yards?.let { "${GeoMath.formattedYardage(it)} yds to green" } ?: "Waiting for GPS",
+                text = headline,
                 color = MaterialTheme.colorScheme.onPrimary,
                 style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Bold,
             )
+            val subtitle =
+                when {
+                    liveYards != null -> null
+                    state.userLocation == null -> null
+                    holeLength != null -> "Tee to green - move to the course for live yardage"
+                    else -> null
+                }
+            subtitle?.let {
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
         }
     }
 }

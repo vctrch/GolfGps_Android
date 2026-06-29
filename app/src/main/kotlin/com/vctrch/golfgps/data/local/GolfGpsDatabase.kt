@@ -5,7 +5,10 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [CachedCourseEntity::class],
-    version = 1,
+    // v2: drop caches written by earlier builds whose course discovery returned a neighbouring
+    // course's holes (e.g. a par-3 layout next to the target course), so stale wrong greens/yardages
+    // are cleared via the destructive migration.
+    version = 2,
     exportSchema = false,
 )
 abstract class GolfGpsDatabase : RoomDatabase() {
