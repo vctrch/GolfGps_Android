@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "789075914580",
+    "project_id": "golfplay-2c780",
+    "storage_bucket": "golfplay-2c780.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:789075914580:android:7747fc41d198f23b5e62c1",
+        "android_client_info": {
+          "package_name": "com.vctrch.golfgps"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAfgy2t5QXH1NMYQ5W8-XaC1sLKO-xmCWE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
