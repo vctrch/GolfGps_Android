@@ -1,5 +1,6 @@
 package com.vctrch.golfgps.data.local
 
+import com.vctrch.golfgps.data.remote.OSMHoleParser
 import com.vctrch.golfgps.domain.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -19,6 +20,7 @@ data class PersistedHoleTarget(
     val par: Int? = null,
     val teeLatitude: Double? = null,
     val teeLongitude: Double? = null,
+    val teeSourceRaw: String? = null,
     val greenLatitude: Double,
     val greenLongitude: Double,
     @SerialName("source") val sourceRaw: String,
@@ -33,7 +35,14 @@ class CourseDataCache(
         val scorecard = decodeScorecard(record.scorecardJson)
         if (scorecard.isEmpty()) return null
         val summary = record.toSummary()
-        val holes = CourseLoaderSupport.fallbackHoles(scorecard, summary)
+        val fallback = CourseLoaderSupport.fallbackHoles(scorecard, summary)
+        val cachedOsm = record.osmHolesJson?.let { decodeHoles(it) }.orEmpty()
+        val holes =
+            if (cachedOsm.any { CourseLoaderSupport.isMappedOsmHole(it) }) {
+                OSMHoleParser.mergeHoles(fallback, cachedOsm, scorecard)
+            } else {
+                fallback
+            }
         return LoadedCourse(summary = summary, scorecard = scorecard, holes = holes)
     }
 
@@ -146,6 +155,7 @@ class CourseDataCache(
                     par = hole.par,
                     teeLatitude = hole.tee?.latitude,
                     teeLongitude = hole.tee?.longitude,
+                    teeSourceRaw = hole.teeSource?.name,
                     greenLatitude = hole.green.latitude,
                     greenLongitude = hole.green.longitude,
                     sourceRaw = hole.source.name,
@@ -161,6 +171,10 @@ class CourseDataCache(
                 number = row.number,
                 par = row.par,
                 tee = row.teeLatitude?.let { lat -> row.teeLongitude?.let { lon -> LatLng(lat, lon) } },
+                teeSource =
+                    row.teeSourceRaw?.let { raw ->
+                        runCatching { TeeMappingSource.valueOf(raw) }.getOrNull()
+                    },
                 green = LatLng(row.greenLatitude, row.greenLongitude),
                 source = source,
             )

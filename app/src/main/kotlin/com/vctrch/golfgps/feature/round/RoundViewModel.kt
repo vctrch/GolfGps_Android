@@ -24,6 +24,7 @@ data class RoundUiState(
     val searchResults: List<GolfCourseSummary> = emptyList(),
     val isSearching: Boolean = false,
     val isLoadingCourse: Boolean = false,
+    val isEnhancingHoles: Boolean = false,
     val errorMessage: String? = null,
     val courseLoadError: String? = null,
     val loadedCourse: LoadedCourse? = null,
@@ -36,10 +37,28 @@ data class RoundUiState(
     val currentHole: HoleTarget?
         get() = loadedCourse?.holes?.firstOrNull { it.number == selectedHoleNumber }
 
+    val currentHoleIndex: Int
+        get() {
+            val holes = loadedCourse?.holes ?: return 0
+            return holes.indexOfFirst { it.number == selectedHoleNumber }.coerceAtLeast(0)
+        }
+
+    val currentHoleNeedsGPS: Boolean
+        get() = currentHole?.hasReliableGreenPosition == false
+
+    val needsHoleGPSRefinement: Boolean
+        get() = loadedCourse?.holes?.any { !it.hasReliableGreenPosition } == true
+
     fun distanceToGreen(): Int? {
         val hole = currentHole ?: return null
         val location = userLocation ?: return null
         return hole.playerYardsToGreen(location)
+    }
+
+    fun distanceToTee(): Int? {
+        val hole = currentHole ?: return null
+        val location = userLocation ?: return null
+        return hole.playerYardsToTee(location)
     }
 
     companion object {
@@ -68,6 +87,10 @@ class RoundViewModel
         private var searchJob: Job? = null
         private var activeSearchId = 0
         private var locationJob: Job? = null
+        private var osmEnhancementJob: Job? = null
+        private var osmEnhancementGeneration = 0
+        private var osmRefinementAttempts = 0
+        private var lastOsmRefinementAtMs = 0L
 
         init {
             observeLocation()
@@ -91,6 +114,9 @@ class RoundViewModel
                         .catch { /* Ignore location errors (e.g. permission revoked); keep last fix. */ }
                         .collect { location ->
                             _uiState.update { it.copy(userLocation = location) }
+                            if (location != null) {
+                                refineHoleGPSIfNeeded(location)
+                            }
                         }
                 }
         }
@@ -125,6 +151,8 @@ class RoundViewModel
                         }
                         return@launch
                     }
+                    osmRefinementAttempts = 0
+                    lastOsmRefinementAtMs = 0L
                     _uiState.update {
                         it.copy(
                             isLoadingCourse = false,
@@ -132,7 +160,7 @@ class RoundViewModel
                             selectedHoleNumber = loaded.holes.firstOrNull()?.number ?: 1,
                         )
                     }
-                    enrichGreens(loaded)
+                    beginBackgroundHoleGPSRefresh(force = false)
                 } catch (_: Exception) {
                     _uiState.update {
                         it.copy(
@@ -144,36 +172,79 @@ class RoundViewModel
             }
         }
 
-        /**
-         * Fetches real per-hole greens from OpenStreetMap in the background and swaps them into the
-         * already-open round, so the map and yardages stop pointing at the course center. No-op when
-         * OSM has nothing for this course (the scorecard fallback stays in place).
-         */
-        private fun enrichGreens(loaded: LoadedCourse) {
-            viewModelScope.launch {
-                val enriched = runCatching { courseRepository.enrichWithOsmGreens(loaded) }.getOrNull() ?: return@launch
-                _uiState.update { state ->
-                    if (state.loadedCourse?.summary?.id == enriched.summary.id) {
-                        state.copy(loadedCourse = enriched)
-                    } else {
-                        state
+        /** Manual reload — mirrors iOS toolbar refresh. */
+        fun reloadHoleGPS() {
+            if (_uiState.value.loadedCourse == null) return
+            beginBackgroundHoleGPSRefresh(force = true)
+        }
+
+        fun refineHoleGPSIfNeeded(userLocation: LatLng) {
+            val state = _uiState.value
+            if (state.loadedCourse == null) return
+            if (!state.needsHoleGPSRefinement && !state.currentHoleNeedsGPS) return
+            if (osmEnhancementJob?.isActive == true || state.isEnhancingHoles) return
+            if (osmRefinementAttempts >= MAX_OSM_REFINEMENT_ATTEMPTS) return
+            val now = System.currentTimeMillis()
+            if (now - lastOsmRefinementAtMs < OSM_REFINEMENT_COOLDOWN_MS) return
+            osmRefinementAttempts += 1
+            lastOsmRefinementAtMs = now
+            beginBackgroundHoleGPSRefresh(force = false, searchNear = userLocation)
+        }
+
+        private fun beginBackgroundHoleGPSRefresh(
+            force: Boolean,
+            searchNear: LatLng? = _uiState.value.userLocation,
+        ) {
+            val course = _uiState.value.loadedCourse ?: return
+            if (!force && osmEnhancementJob?.isActive == true) return
+
+            osmEnhancementJob?.cancel()
+            osmEnhancementGeneration += 1
+            val generation = osmEnhancementGeneration
+            osmEnhancementJob =
+                viewModelScope.launch {
+                    _uiState.update { it.copy(isEnhancingHoles = true) }
+                    try {
+                        val enriched =
+                            courseRepository.enrichWithOsmGreens(
+                                loaded = course,
+                                forceNetwork = force,
+                                userLocation = searchNear,
+                            ) ?: return@launch
+                        if (generation != osmEnhancementGeneration) return@launch
+                        _uiState.update { state ->
+                            if (state.loadedCourse?.summary?.id == enriched.summary.id) {
+                                state.copy(loadedCourse = enriched)
+                            } else {
+                                state
+                            }
+                        }
+                    } finally {
+                        if (generation == osmEnhancementGeneration) {
+                            _uiState.update { it.copy(isEnhancingHoles = false) }
+                        }
                     }
                 }
-            }
         }
 
         fun endRound() {
+            osmEnhancementJob?.cancel()
+            osmEnhancementGeneration += 1
+            osmRefinementAttempts = 0
+            lastOsmRefinementAtMs = 0L
             _uiState.update {
                 it.copy(
                     loadedCourse = null,
                     selectedHoleNumber = 1,
                     courseLoadError = null,
+                    isEnhancingHoles = false,
                 )
             }
         }
 
         fun selectHole(number: Int) {
             _uiState.update { it.copy(selectedHoleNumber = number) }
+            _uiState.value.userLocation?.let { refineHoleGPSIfNeeded(it) }
         }
 
         fun previousHole() {
@@ -233,5 +304,7 @@ class RoundViewModel
 
         companion object {
             private const val SEARCH_DEBOUNCE_MS = 350L
+            private const val MAX_OSM_REFINEMENT_ATTEMPTS = 5
+            private const val OSM_REFINEMENT_COOLDOWN_MS = 12_000L
         }
     }

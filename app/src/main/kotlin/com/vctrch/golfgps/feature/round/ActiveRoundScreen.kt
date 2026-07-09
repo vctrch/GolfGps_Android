@@ -1,18 +1,49 @@
 package com.vctrch.golfgps.feature.round
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.vctrch.golfgps.domain.*
+import com.vctrch.golfgps.domain.GeoMath
+import com.vctrch.golfgps.domain.HoleTarget
+import com.vctrch.golfgps.domain.LoadedCourse
+import com.vctrch.golfgps.domain.MapDisplayStyle
+import com.vctrch.golfgps.domain.TeeMappingConfidence
+import com.vctrch.golfgps.domain.greenMappingConfidence
+import com.vctrch.golfgps.domain.showsEstimatedQualifier
+import com.vctrch.golfgps.domain.teeMappingConfidence
 import com.vctrch.golfgps.feature.map.HoleMapSection
 import com.vctrch.golfgps.ui.theme.GolfTheme
 
@@ -26,6 +57,7 @@ fun ActiveRoundScreen(
     onSelectHole: (Int) -> Unit,
     onPreviousHole: () -> Unit,
     onNextHole: () -> Unit,
+    onReloadHoleGPS: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val course = state.loadedCourse ?: return
@@ -41,6 +73,11 @@ fun ActiveRoundScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "End round")
                     }
                 },
+                actions = {
+                    IconButton(onClick = onReloadHoleGPS, enabled = !state.isLoadingCourse) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Reload hole GPS")
+                    }
+                },
             )
         },
     ) { padding ->
@@ -53,7 +90,11 @@ fun ActiveRoundScreen(
                     .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
+            HoleHeader(course = course, hole = hole, holeIndex = state.currentHoleIndex)
             YardageHero(state = state, hole = hole)
+            if (state.isEnhancingHoles) {
+                HoleMapLoadingBanner()
+            }
             HoleMapSection(
                 hole = hole,
                 userLocation = state.userLocation,
@@ -65,6 +106,11 @@ fun ActiveRoundScreen(
                 AssistChip(onClick = onPreviousHole, label = { Text("Previous") })
                 AssistChip(onClick = onNextHole, label = { Text("Next") })
             }
+            CourseMappingCard(
+                course = course,
+                selectedHoleNumber = state.selectedHoleNumber,
+                onSelectHole = onSelectHole,
+            )
             Text(
                 "OpenGolfAPI · OpenStreetMap",
                 style = MaterialTheme.typography.labelMedium,
@@ -75,49 +121,187 @@ fun ActiveRoundScreen(
 }
 
 @Composable
+private fun HoleHeader(
+    course: LoadedCourse,
+    hole: HoleTarget,
+    holeIndex: Int,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            "Hole ${hole.number}",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            hole.par?.let {
+                Text(
+                    "Par $it",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = GolfTheme.Fairway,
+                )
+            }
+            Text(
+                "${holeIndex + 1} of ${course.holes.size}",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun HoleMapLoadingBanner() {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(GolfTheme.Fairway.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Default.Sync, contentDescription = null, tint = GolfTheme.Fairway)
+        Text(
+            "Loading hole map…",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+        )
+    }
+}
+
+@Composable
 private fun YardageHero(
     state: RoundUiState,
     hole: HoleTarget,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = GolfTheme.Fairway),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
     ) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                "Hole ${hole.number}",
-                color = MaterialTheme.colorScheme.onPrimary,
-                style = MaterialTheme.typography.titleMedium,
-            )
-            val liveYards = state.distanceToGreen()
-            val holeLength = hole.holeLengthYards()
-            val headline =
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .background(GolfTheme.HeroGradient, RoundedCornerShape(24.dp))
+                    .padding(24.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                HoleMappingConfidenceRow(hole = hole, heroStyle = true)
+
+                val liveYards = state.distanceToGreen()
                 when {
-                    liveYards != null -> "${GeoMath.formattedYardage(liveYards)} yds to green"
-                    holeLength != null -> "${GeoMath.formattedYardage(holeLength)} yds"
-                    else -> "Waiting for GPS"
+                    liveYards != null -> {
+                        HeroYardage(yards = liveYards, estimated = hole.showsEstimatedQualifier)
+                    }
+                    state.userLocation == null -> {
+                        Text(
+                            "Waiting for GPS",
+                            color = Color.White.copy(alpha = 0.95f),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                    state.currentHoleNeedsGPS -> {
+                        Text(
+                            "—",
+                            color = Color.White.copy(alpha = 0.85f),
+                            style = MaterialTheme.typography.displayLarge,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            "Hole map still loading",
+                            color = Color.White.copy(alpha = 0.9f),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+                    else -> {
+                        val holeLength = hole.holeLengthYards()
+                        if (holeLength != null) {
+                            Text(
+                                "${GeoMath.formattedYardage(holeLength)} yds",
+                                color = Color.White,
+                                style = MaterialTheme.typography.displaySmall,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                "Tee to green — move to the course for live yardage",
+                                color = Color.White.copy(alpha = 0.85f),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        } else {
+                            Text(
+                                "Waiting for GPS",
+                                color = Color.White.copy(alpha = 0.95f),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
                 }
+
+                val teeYards = state.distanceToTee()
+                when {
+                    teeYards != null -> {
+                        Text(
+                            "${GeoMath.formattedYardage(teeYards)} yds to tee",
+                            color = Color.White.copy(alpha = 0.8f),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+                    hole.teeMappingConfidence == TeeMappingConfidence.NOT_MAPPED -> {
+                        Text(
+                            hole.teeMappingConfidence.shortLabel,
+                            color = Color.White.copy(alpha = 0.72f),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+                    hole.tee != null -> {
+                        Text(
+                            hole.teeMappingConfidence.shortLabel,
+                            color = Color.White.copy(alpha = 0.72f),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeroYardage(
+    yards: Int,
+    estimated: Boolean,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                text = headline,
-                color = MaterialTheme.colorScheme.onPrimary,
-                style = MaterialTheme.typography.displaySmall,
+                GeoMath.formattedYardage(yards),
+                color = Color.White,
+                style = MaterialTheme.typography.displayLarge,
                 fontWeight = FontWeight.Bold,
             )
-            val subtitle =
-                when {
-                    liveYards != null -> null
-                    state.userLocation == null -> null
-                    holeLength != null -> "Tee to green - move to the course for live yardage"
-                    else -> null
-                }
-            subtitle?.let {
-                Text(
-                    text = it,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
+            Text(
+                "yds to green",
+                color = Color.White.copy(alpha = 0.85f),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
+        if (estimated) {
+            Text(
+                "ESTIMATED",
+                color = Color.White.copy(alpha = 0.75f),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 }
@@ -128,25 +312,43 @@ private fun HolePicker(
     selectedHoleNumber: Int,
     onSelectHole: (Int) -> Unit,
 ) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        course.holes.forEach { hole ->
-            AssistChip(
-                onClick = { onSelectHole(hole.number) },
-                label = { Text("${hole.number}") },
-                modifier = Modifier.padding(vertical = 2.dp),
-                border =
-                    if (hole.number == selectedHoleNumber) {
-                        AssistChipDefaults.assistChipBorder(enabled = true, borderColor = GolfTheme.Fairway)
-                    } else {
-                        AssistChipDefaults.assistChipBorder(enabled = true)
-                    },
-            )
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            "Jump to hole",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            course.holes.forEach { hole ->
+                val selected = hole.number == selectedHoleNumber
+                val confidence = hole.greenMappingConfidence
+                Surface(
+                    onClick = { onSelectHole(hole.number) },
+                    shape = CircleShape,
+                    color = if (selected) GolfTheme.Fairway else greenPickerColor(confidence),
+                    border =
+                        BorderStroke(
+                            width = if (selected) 0.dp else 1.5.dp,
+                            color = if (selected) Color.Transparent else greenPickerBorder(confidence),
+                        ),
+                    modifier = Modifier.size(44.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Text(
+                            "${hole.number}",
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (selected) Color.White else MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+            }
         }
     }
 }

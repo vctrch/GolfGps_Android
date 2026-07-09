@@ -301,6 +301,7 @@ object OSMHoleParser {
                     number = hole.number,
                     par = hole.par ?: parByHole[hole.number],
                     tee = oriented.first,
+                    teeSource = TeeMappingSource.FAIRWAY,
                     green = greenCoord,
                     source = HoleTargetSource.OPEN_STREET_MAP,
                 ),
@@ -408,6 +409,7 @@ object OSMHoleParser {
                     number = number,
                     par = parByHole[number],
                     tee = tee,
+                    teeSource = TeeMappingSource.INFERRED,
                     green = green,
                     source = HoleTargetSource.OPEN_STREET_MAP_INFERRED,
                 )

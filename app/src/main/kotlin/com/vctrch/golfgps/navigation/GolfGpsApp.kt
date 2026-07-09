@@ -43,6 +43,7 @@ fun GolfGpsApp() {
                     onSelectHole = viewModel::selectHole,
                     onPreviousHole = viewModel::previousHole,
                     onNextHole = viewModel::nextHole,
+                    onReloadHoleGPS = viewModel::reloadHoleGPS,
                 )
             }
             else -> {

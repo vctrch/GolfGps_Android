@@ -49,12 +49,24 @@ class CourseRepository
          * and returns [loaded] with that geometry merged in. Returns `null` when no OSM data is
          * available so the caller can keep the scorecard's course-center fallback. Best-effort: any
          * failure (offline, rate limit, unmapped course, timeout) yields `null`.
+         *
+         * @param forceNetwork when true, skips the cache-only short-circuit and always hits Overpass
+         * (used by manual "Reload hole GPS").
+         * @param userLocation optional GPS used to bias Overpass discovery near the player.
          */
-        suspend fun enrichWithOsmGreens(loaded: LoadedCourse): LoadedCourse? {
+        suspend fun enrichWithOsmGreens(
+            loaded: LoadedCourse,
+            forceNetwork: Boolean = false,
+            userLocation: LatLng? = null,
+        ): LoadedCourse? {
             val summary = loaded.summary
             val osmHoles =
                 try {
-                    cache.cachedOsmHoles(summary.id) ?: fetchAndCacheOsmHoles(loaded)
+                    if (forceNetwork) {
+                        fetchAndCacheOsmHoles(loaded, userLocation)
+                    } else {
+                        cache.cachedOsmHoles(summary.id) ?: fetchAndCacheOsmHoles(loaded, userLocation)
+                    }
                 } catch (_: Exception) {
                     emptyList()
                 }
@@ -64,7 +76,10 @@ class CourseRepository
             return loaded.copy(holes = merged)
         }
 
-        private suspend fun fetchAndCacheOsmHoles(loaded: LoadedCourse): List<HoleTarget> {
+        private suspend fun fetchAndCacheOsmHoles(
+            loaded: LoadedCourse,
+            userLocation: LatLng?,
+        ): List<HoleTarget> {
             val summary = loaded.summary
             val holes =
                 osmGolfSource.loadHoleTargets(
@@ -72,7 +87,7 @@ class CourseRepository
                     osmCourseId = summary.osmId,
                     courseName = summary.name,
                     scorecard = loaded.scorecard,
-                    userLocation = null,
+                    userLocation = userLocation,
                 )
             val mapped = holes.filter { CourseLoaderSupport.isMappedOsmHole(it) }
             if (mapped.isNotEmpty()) {
