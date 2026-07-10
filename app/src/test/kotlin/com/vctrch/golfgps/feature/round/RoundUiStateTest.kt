@@ -32,6 +32,27 @@ class RoundUiStateTest {
     }
 
     @Test
+    fun isRoundUnavailable_requiresLoadErrorAndLastSelectedCourse() {
+        assertFalse(RoundUiState().isRoundUnavailable)
+        assertFalse(
+            RoundUiState(courseLoadError = "fail").isRoundUnavailable,
+        )
+        assertTrue(
+            RoundUiState(
+                courseLoadError = "fail",
+                lastSelectedCourse = TestFixtures.summary(),
+            ).isRoundUnavailable,
+        )
+        assertFalse(
+            RoundUiState(
+                courseLoadError = "fail",
+                lastSelectedCourse = TestFixtures.summary(),
+                loadedCourse = TestFixtures.loadedCourse(),
+            ).isRoundUnavailable,
+        )
+    }
+
+    @Test
     fun distanceToGreen_nullWithoutLocationOrHole() {
         assertNull(RoundUiState().distanceToGreen())
 

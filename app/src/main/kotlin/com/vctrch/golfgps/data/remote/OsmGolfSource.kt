@@ -19,7 +19,7 @@ interface OsmGolfSource {
         courseName: String?,
         scorecard: List<ScorecardHole>,
         userLocation: LatLng? = null,
-    ): List<HoleTarget>
+    ): OSMHoleLoadResult
 }
 
 class OverpassGolfSource(
@@ -43,7 +43,7 @@ class OverpassGolfSource(
         courseName: String?,
         scorecard: List<ScorecardHole>,
         userLocation: LatLng?,
-    ): List<HoleTarget> {
+    ): OSMHoleLoadResult {
         val effectivePlayer = effectivePlayerLocation(userLocation, courseCenter)
         val resolved =
             osmCourseId?.let { ResolvedCourse("way", it, null) }
@@ -63,7 +63,9 @@ class OverpassGolfSource(
                         trustCourseArea = true,
                         playerLocation = effectivePlayer,
                     )
-                if (parsed.isNotEmpty()) return parsed
+                if (parsed.isNotEmpty()) {
+                    return OSMHoleLoadResult(parsed, OSMHoleParser.gapFillContext(elements))
+                }
             }
         }
         return aroundSearch(courseCenter, scorecard, userLocation, effectivePlayer)
@@ -74,11 +76,12 @@ class OverpassGolfSource(
         scorecard: List<ScorecardHole>,
         userLocation: LatLng?,
         effectivePlayer: LatLng?,
-    ): List<HoleTarget> {
+    ): OSMHoleLoadResult {
         val queryCoordinate = queryCoordinate(courseCenter, userLocation)
         val expectedHoleNumbers = scorecard.map { it.number }.toSet()
         var lastElements: List<OverpassElement> = emptyList()
         var bestParsed: List<HoleTarget> = emptyList()
+        var bestElements: List<OverpassElement> = emptyList()
 
         val stages =
             listOf(
@@ -106,7 +109,10 @@ class OverpassGolfSource(
                     trustCourseArea = false,
                     playerLocation = effectivePlayer,
                 )
-            if (parsed.size > bestParsed.size) bestParsed = parsed
+            if (parsed.size > bestParsed.size) {
+                bestParsed = parsed
+                bestElements = filtered
+            }
 
             val mappedNumbers = parsed.map { it.number }.toSet()
             val allScorecardHolesMapped =
@@ -114,7 +120,7 @@ class OverpassGolfSource(
             if (allScorecardHolesMapped || index == stages.lastIndex) break
         }
 
-        return bestParsed
+        return OSMHoleLoadResult(bestParsed, OSMHoleParser.gapFillContext(bestElements))
     }
 
     private fun multiAnchorAroundQuery(

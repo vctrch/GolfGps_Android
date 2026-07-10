@@ -43,6 +43,16 @@ fun GolfGpsApp() {
                     onSelectHole = viewModel::selectHole,
                     onPreviousHole = viewModel::previousHole,
                     onNextHole = viewModel::nextHole,
+                    onReloadHoleGPS = viewModel::reloadHoleGPS,
+                    onOpenLocationSettings = viewModel::openLocationSettings,
+                    onRequestPreciseLocation = viewModel::requestPreciseLocation,
+                )
+            }
+            state.isRoundUnavailable -> {
+                RoundUnavailableScreen(
+                    errorMessage = state.courseLoadError,
+                    onRetry = viewModel::retryCourseLoad,
+                    onBackToSearch = viewModel::endRound,
                 )
             }
             else -> {

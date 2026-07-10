@@ -2,10 +2,12 @@ package com.vctrch.golfgps.feature.round
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.vctrch.golfgps.data.analytics.GolfAnalytics
 import com.vctrch.golfgps.data.local.UserPreferencesRepository
 import com.vctrch.golfgps.data.repository.CourseRepository
 import com.vctrch.golfgps.domain.*
 import com.vctrch.golfgps.location.LocationRepository
+import com.vctrch.golfgps.location.LocationUiStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -24,22 +26,45 @@ data class RoundUiState(
     val searchResults: List<GolfCourseSummary> = emptyList(),
     val isSearching: Boolean = false,
     val isLoadingCourse: Boolean = false,
+    val isEnhancingHoles: Boolean = false,
     val errorMessage: String? = null,
     val courseLoadError: String? = null,
     val loadedCourse: LoadedCourse? = null,
+    val lastSelectedCourse: GolfCourseSummary? = null,
     val selectedHoleNumber: Int = 1,
     val userLocation: LatLng? = null,
+    val locationStatus: LocationUiStatus = LocationUiStatus(),
 ) {
     val trimmedSearchQuery: String get() = searchQuery.trim()
     val isSearchActive: Boolean get() = trimmedSearchQuery.length >= MINIMUM_SEARCH_QUERY_LENGTH
     val isRoundReady: Boolean get() = loadedCourse != null && currentHole != null
+    val isRoundUnavailable: Boolean
+        get() = courseLoadError != null && loadedCourse == null && lastSelectedCourse != null
     val currentHole: HoleTarget?
         get() = loadedCourse?.holes?.firstOrNull { it.number == selectedHoleNumber }
+
+    val currentHoleIndex: Int
+        get() {
+            val holes = loadedCourse?.holes ?: return 0
+            return holes.indexOfFirst { it.number == selectedHoleNumber }.coerceAtLeast(0)
+        }
+
+    val currentHoleNeedsGPS: Boolean
+        get() = currentHole?.hasReliableGreenPosition == false
+
+    val needsHoleGPSRefinement: Boolean
+        get() = loadedCourse?.holes?.any { !it.hasReliableGreenPosition } == true
 
     fun distanceToGreen(): Int? {
         val hole = currentHole ?: return null
         val location = userLocation ?: return null
         return hole.playerYardsToGreen(location)
+    }
+
+    fun distanceToTee(): Int? {
+        val hole = currentHole ?: return null
+        val location = userLocation ?: return null
+        return hole.playerYardsToTee(location)
     }
 
     companion object {
@@ -54,6 +79,7 @@ class RoundViewModel
         private val courseRepository: CourseRepository,
         private val userPreferencesRepository: UserPreferencesRepository,
         private val locationRepository: LocationRepository,
+        private val analytics: GolfAnalytics,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(RoundUiState())
         val uiState: StateFlow<RoundUiState> = _uiState.asStateFlow()
@@ -68,18 +94,35 @@ class RoundViewModel
         private var searchJob: Job? = null
         private var activeSearchId = 0
         private var locationJob: Job? = null
+        private var osmEnhancementJob: Job? = null
+        private var osmEnhancementGeneration = 0
+        private var osmRefinementAttempts = 0
+        private var lastOsmRefinementAtMs = 0L
 
         init {
             observeLocation()
+            viewModelScope.launch {
+                locationRepository.status.collect { status ->
+                    _uiState.update { it.copy(locationStatus = status) }
+                }
+            }
         }
 
-        /**
-         * Re-subscribes to location updates. Called once on creation and again after the location
-         * permission is granted, because the initial subscription emits nothing until permission
-         * exists.
-         */
         fun refreshLocationUpdates() {
+            locationRepository.refreshPermissionStatus()
             observeLocation()
+        }
+
+        fun openLocationSettings() {
+            if (_uiState.value.locationStatus.locationServicesDisabled) {
+                locationRepository.openLocationSettings()
+            } else {
+                locationRepository.openAppSettings()
+            }
+        }
+
+        fun requestPreciseLocation() {
+            locationRepository.requestPreciseLocationIfNeeded()
         }
 
         private fun observeLocation() {
@@ -88,9 +131,12 @@ class RoundViewModel
                 viewModelScope.launch {
                     locationRepository
                         .locationUpdates()
-                        .catch { /* Ignore location errors (e.g. permission revoked); keep last fix. */ }
+                        .catch { /* Ignore location errors; keep last fix. */ }
                         .collect { location ->
                             _uiState.update { it.copy(userLocation = location) }
+                            if (location != null) {
+                                refineHoleGPSIfNeeded(location)
+                            }
                         }
                 }
         }
@@ -105,75 +151,168 @@ class RoundViewModel
         }
 
         fun selectCourse(course: GolfCourseSummary) {
+            analytics.logCourseSelected(course)
             viewModelScope.launch {
                 _uiState.update {
-                    it.copy(isLoadingCourse = true, courseLoadError = null, errorMessage = null)
+                    it.copy(
+                        isLoadingCourse = true,
+                        courseLoadError = null,
+                        errorMessage = null,
+                        lastSelectedCourse = course,
+                        loadedCourse = null,
+                    )
                 }
+                osmEnhancementJob?.cancel()
+                osmEnhancementGeneration += 1
+                osmRefinementAttempts = 0
+                lastOsmRefinementAtMs = 0L
+
+                var displayedCachedCourse = false
+                courseRepository.cachedBasics(course)?.takeIf { it.holes.isNotEmpty() }?.let { cached ->
+                    displayedCachedCourse = true
+                    analytics.logRoundStarted(course, cached.holes.size)
+                    _uiState.update {
+                        it.copy(
+                            isLoadingCourse = false,
+                            loadedCourse = cached,
+                            selectedHoleNumber = cached.holes.firstOrNull()?.number ?: 1,
+                            courseLoadError = null,
+                        )
+                    }
+                }
+
                 try {
                     var loaded = courseRepository.loadCourseBasics(course)
-                    // The scorecard may carry no holes; OSM might still have them, so try enriching
-                    // before deciding there is nothing to show.
                     if (loaded.holes.isEmpty()) {
                         loaded = courseRepository.enrichWithOsmGreens(loaded) ?: loaded
                     }
                     if (loaded.holes.isEmpty()) {
-                        _uiState.update {
-                            it.copy(
-                                isLoadingCourse = false,
-                                courseLoadError = "No hole data is available for this course yet.",
-                            )
+                        if (!displayedCachedCourse) {
+                            _uiState.update {
+                                it.copy(
+                                    isLoadingCourse = false,
+                                    courseLoadError = "No hole data is available for this course yet.",
+                                )
+                            }
+                        } else {
+                            _uiState.update { it.copy(isLoadingCourse = false) }
                         }
                         return@launch
+                    }
+                    if (!displayedCachedCourse) {
+                        analytics.logRoundStarted(course, loaded.holes.size)
                     }
                     _uiState.update {
                         it.copy(
                             isLoadingCourse = false,
                             loadedCourse = loaded,
                             selectedHoleNumber = loaded.holes.firstOrNull()?.number ?: 1,
+                            courseLoadError = null,
                         )
                     }
-                    enrichGreens(loaded)
-                } catch (_: Exception) {
-                    _uiState.update {
-                        it.copy(
-                            isLoadingCourse = false,
-                            courseLoadError = "Couldn't load course. Check your connection and try again.",
-                        )
+                    beginBackgroundHoleGPSRefresh(force = false)
+                } catch (e: Exception) {
+                    if (!displayedCachedCourse) {
+                        _uiState.update {
+                            it.copy(
+                                isLoadingCourse = false,
+                                courseLoadError = friendlyCourseLoadMessage(e),
+                            )
+                        }
+                    } else {
+                        _uiState.update { it.copy(isLoadingCourse = false) }
+                        beginBackgroundHoleGPSRefresh(force = false)
                     }
                 }
             }
         }
 
-        /**
-         * Fetches real per-hole greens from OpenStreetMap in the background and swaps them into the
-         * already-open round, so the map and yardages stop pointing at the course center. No-op when
-         * OSM has nothing for this course (the scorecard fallback stays in place).
-         */
-        private fun enrichGreens(loaded: LoadedCourse) {
-            viewModelScope.launch {
-                val enriched = runCatching { courseRepository.enrichWithOsmGreens(loaded) }.getOrNull() ?: return@launch
-                _uiState.update { state ->
-                    if (state.loadedCourse?.summary?.id == enriched.summary.id) {
-                        state.copy(loadedCourse = enriched)
-                    } else {
-                        state
+        fun retryCourseLoad() {
+            val course = _uiState.value.lastSelectedCourse ?: return
+            selectCourse(course)
+        }
+
+        fun reloadHoleGPS() {
+            val courseId = _uiState.value.loadedCourse?.summary?.id ?: return
+            analytics.logReloadHoleGps(courseId)
+            beginBackgroundHoleGPSRefresh(force = true)
+        }
+
+        fun refineHoleGPSIfNeeded(userLocation: LatLng) {
+            val state = _uiState.value
+            if (state.loadedCourse == null) return
+            if (!state.needsHoleGPSRefinement && !state.currentHoleNeedsGPS) return
+            if (osmEnhancementJob?.isActive == true || state.isEnhancingHoles) return
+            if (osmRefinementAttempts >= MAX_OSM_REFINEMENT_ATTEMPTS) return
+            val now = System.currentTimeMillis()
+            if (now - lastOsmRefinementAtMs < OSM_REFINEMENT_COOLDOWN_MS) return
+            osmRefinementAttempts += 1
+            lastOsmRefinementAtMs = now
+            beginBackgroundHoleGPSRefresh(force = false, searchNear = userLocation)
+        }
+
+        private fun beginBackgroundHoleGPSRefresh(
+            force: Boolean,
+            searchNear: LatLng? = _uiState.value.userLocation,
+        ) {
+            val course = _uiState.value.loadedCourse ?: return
+            if (!force && osmEnhancementJob?.isActive == true) return
+
+            osmEnhancementJob?.cancel()
+            osmEnhancementGeneration += 1
+            val generation = osmEnhancementGeneration
+            osmEnhancementJob =
+                viewModelScope.launch {
+                    _uiState.update { it.copy(isEnhancingHoles = true) }
+                    try {
+                        val enriched =
+                            courseRepository.enrichWithOsmGreens(
+                                loaded = course,
+                                forceNetwork = force,
+                                userLocation = searchNear,
+                            ) ?: return@launch
+                        if (generation != osmEnhancementGeneration) return@launch
+                        analytics.logOsmEnrichment(
+                            courseId = enriched.summary.id,
+                            mappedHoleCount = enriched.holes.count { it.hasReliableGreenPosition },
+                            forced = force,
+                        )
+                        _uiState.update { state ->
+                            if (state.loadedCourse?.summary?.id == enriched.summary.id) {
+                                state.copy(loadedCourse = enriched)
+                            } else {
+                                state
+                            }
+                        }
+                    } finally {
+                        if (generation == osmEnhancementGeneration) {
+                            _uiState.update { it.copy(isEnhancingHoles = false) }
+                        }
                     }
                 }
-            }
         }
 
         fun endRound() {
+            analytics.logRoundEnded(_uiState.value.loadedCourse?.summary?.id)
+            osmEnhancementJob?.cancel()
+            osmEnhancementGeneration += 1
+            osmRefinementAttempts = 0
+            lastOsmRefinementAtMs = 0L
             _uiState.update {
                 it.copy(
                     loadedCourse = null,
                     selectedHoleNumber = 1,
                     courseLoadError = null,
+                    isEnhancingHoles = false,
+                    // Keep lastSelectedCourse so search can offer "Improve {course}".
                 )
             }
         }
 
         fun selectHole(number: Int) {
+            analytics.logHoleSelected(number)
             _uiState.update { it.copy(selectedHoleNumber = number) }
+            _uiState.value.userLocation?.let { refineHoleGPSIfNeeded(it) }
         }
 
         fun previousHole() {
@@ -217,13 +356,15 @@ class RoundViewModel
                     try {
                         val results = courseRepository.searchCourses(query)
                         if (searchId != activeSearchId) return@launch
+                        analytics.logSearch(query, results.size)
                         _uiState.update { it.copy(searchResults = results, isSearching = false) }
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
                         if (searchId != activeSearchId) return@launch
+                        if (isIgnorableSearchError(e)) return@launch
                         _uiState.update {
                             it.copy(
                                 isSearching = false,
-                                errorMessage = "Search failed. Try again.",
+                                errorMessage = friendlySearchMessage(e),
                                 searchResults = emptyList(),
                             )
                         }
@@ -231,7 +372,57 @@ class RoundViewModel
                 }
         }
 
+        private fun isIgnorableSearchError(error: Throwable): Boolean {
+            return error is kotlinx.coroutines.CancellationException
+        }
+
+        private fun friendlyCourseLoadMessage(error: Throwable): String {
+            return when {
+                isOfflineError(error) -> "No internet connection. Check your network and try again."
+                isTimeoutError(error) -> "The request timed out. Try again."
+                else -> "Couldn't load course. Check your connection and try again."
+            }
+        }
+
+        private fun friendlySearchMessage(error: Throwable): String {
+            return when {
+                isOfflineError(error) -> "No internet connection. Check your network and try again."
+                isTimeoutError(error) -> "The request timed out. Try again."
+                else -> "Search failed. Try again."
+            }
+        }
+
+        private fun isOfflineError(error: Throwable): Boolean {
+            var current: Throwable? = error
+            while (current != null) {
+                if (current is java.net.UnknownHostException ||
+                    current is java.net.ConnectException ||
+                    current.message?.contains("Unable to resolve host", ignoreCase = true) == true
+                ) {
+                    return true
+                }
+                current = current.cause
+            }
+            return false
+        }
+
+        private fun isTimeoutError(error: Throwable): Boolean {
+            var current: Throwable? = error
+            while (current != null) {
+                if (current is java.net.SocketTimeoutException ||
+                    current is kotlinx.coroutines.TimeoutCancellationException ||
+                    current.message?.contains("timeout", ignoreCase = true) == true
+                ) {
+                    return true
+                }
+                current = current.cause
+            }
+            return false
+        }
+
         companion object {
             private const val SEARCH_DEBOUNCE_MS = 350L
+            private const val MAX_OSM_REFINEMENT_ATTEMPTS = 5
+            private const val OSM_REFINEMENT_COOLDOWN_MS = 12_000L
         }
     }

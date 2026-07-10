@@ -83,6 +83,36 @@ class CourseDataCacheTest {
         }
 
     @Test
+    fun cachedBasics_mergesStoredOsmHolesOffline() =
+        runTest {
+            val summary = TestFixtures.summary()
+            val loaded = TestFixtures.loadedCourse(summary.id)
+            cache.saveBasics(loaded)
+            val osmGreen = LatLng(32.8400, -117.2800)
+            cache.saveOsmHoles(
+                courseId = summary.id,
+                summary = summary,
+                holes =
+                    listOf(
+                        TestFixtures.holeTarget(
+                            number = 1,
+                            source = HoleTargetSource.OPEN_STREET_MAP,
+                            tee = LatLng(32.8390, -117.2790),
+                            teeSource = TeeMappingSource.FAIRWAY,
+                            green = osmGreen,
+                        ),
+                    ),
+            )
+
+            val cached = cache.cachedBasics(summary.id)
+
+            val hole1 = cached?.holes?.first { it.number == 1 }
+            assertEquals(HoleTargetSource.OPEN_STREET_MAP, hole1?.source)
+            assertEquals(osmGreen, hole1?.green)
+            assertEquals(TeeMappingSource.FAIRWAY, hole1?.teeSource)
+        }
+
+    @Test
     fun saveOsmHoles_ignoresScorecardFallbackSources() =
         runTest {
             val summary = TestFixtures.summary()

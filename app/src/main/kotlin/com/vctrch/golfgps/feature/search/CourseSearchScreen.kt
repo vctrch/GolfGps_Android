@@ -3,7 +3,9 @@ package com.vctrch.golfgps.feature.search
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Flag
@@ -97,9 +99,19 @@ fun CourseSearchScreen(
                 )
             }
             else -> {
-                SearchEmptyState(modifier = Modifier.weight(1f))
-                Spacer(modifier = Modifier.height(16.dp))
-                SupportDeveloperCard()
+                val scroll = rememberScrollState()
+                Column(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .verticalScroll(scroll),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    SearchEmptyState()
+                    DataSourcesInfoCard()
+                    HelpMapCourseCard(recentCourse = state.lastSelectedCourse)
+                    SupportDeveloperCard()
+                }
             }
         }
     }
@@ -140,7 +152,7 @@ private fun SearchResultsSection(
 @Composable
 private fun SearchEmptyState(modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().padding(vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
