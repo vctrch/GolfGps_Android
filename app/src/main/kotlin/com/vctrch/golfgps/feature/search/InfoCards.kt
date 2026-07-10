@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vctrch.golfgps.data.remote.OpenGolfCourseLinks
+import com.vctrch.golfgps.domain.GolfCourseSummary
 import com.vctrch.golfgps.ui.theme.GolfTheme
 
 @Composable
@@ -83,7 +84,10 @@ fun DataSourcesInfoCard(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun HelpMapCourseCard(modifier: Modifier = Modifier) {
+fun HelpMapCourseCard(
+    recentCourse: GolfCourseSummary? = null,
+    modifier: Modifier = Modifier,
+) {
     val context = LocalContext.current
 
     ExpandableInfoCard(
@@ -100,6 +104,17 @@ fun HelpMapCourseCard(modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (recentCourse != null) {
+            LinkRow(
+                title = "Improve ${recentCourse.name}",
+                subtitle = "Open this course on OpenGolf",
+                onClick = {
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW, Uri.parse(OpenGolfCourseLinks.coursePage(recentCourse))),
+                    )
+                },
+            )
+        }
         LinkRow(
             title = "Find a course to edit",
             subtitle = "Search the OpenGolf directory",

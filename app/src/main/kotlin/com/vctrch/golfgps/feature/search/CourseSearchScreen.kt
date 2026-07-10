@@ -109,7 +109,7 @@ fun CourseSearchScreen(
                 ) {
                     SearchEmptyState()
                     DataSourcesInfoCard()
-                    HelpMapCourseCard()
+                    HelpMapCourseCard(recentCourse = state.lastSelectedCourse)
                     SupportDeveloperCard()
                 }
             }

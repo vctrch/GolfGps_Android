@@ -1,10 +1,13 @@
 package com.vctrch.golfgps.data.repository
 
 import com.vctrch.golfgps.data.local.CourseDataCache
+import com.vctrch.golfgps.data.remote.GapFillContext
+import com.vctrch.golfgps.data.remote.OSMHoleLoadResult
 import com.vctrch.golfgps.data.remote.OSMHoleParser
 import com.vctrch.golfgps.data.remote.OpenGolfApi
 import com.vctrch.golfgps.data.remote.OsmGolfSource
 import com.vctrch.golfgps.domain.*
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,6 +23,10 @@ class CourseRepository
             return openGolfApi.searchCourses(query)
         }
 
+        /** Instant offline/open path: validated cached basics + OSM merge for the selected course. */
+        suspend fun cachedBasics(summary: GolfCourseSummary): LoadedCourse? =
+            cache.cachedBasics(summary.id, matching = summary)
+
         /**
          * Loads the scorecard quickly and merges in any *already cached* OSM greens. This never
          * touches the network for OSM, so the round can open immediately; live OSM greens are
@@ -31,7 +38,7 @@ class CourseRepository
                 // Keep the summary from search (it always has valid coordinates); the detail
                 // endpoint is only used for the per-hole scorecard.
                 val fallbackHoles = CourseLoaderSupport.fallbackHoles(scorecard, summary)
-                val cachedOsm = cache.cachedOsmHoles(summary.id) ?: emptyList()
+                val cachedOsm = cache.validatedCachedOsmHoles(summary).orEmpty()
                 val holes = OSMHoleParser.mergeHoles(fallbackHoles, cachedOsm, scorecard)
                 val loaded = LoadedCourse(summary = summary, scorecard = scorecard, holes = holes)
                 if (scorecard.isNotEmpty()) {
@@ -39,7 +46,7 @@ class CourseRepository
                 }
                 loaded
             } catch (_: Exception) {
-                cache.cachedBasics(summary.id)
+                cache.cachedBasics(summary.id, matching = summary)
                     ?: throw IllegalStateException("Couldn't load course")
             }
         }
@@ -60,39 +67,73 @@ class CourseRepository
             userLocation: LatLng? = null,
         ): LoadedCourse? {
             val summary = loaded.summary
-            val osmHoles =
+            val result =
                 try {
                     if (forceNetwork) {
                         fetchAndCacheOsmHoles(loaded, userLocation)
                     } else {
-                        cache.cachedOsmHoles(summary.id) ?: fetchAndCacheOsmHoles(loaded, userLocation)
+                        val cached = cache.validatedCachedOsmHoles(summary)
+                        if (cached != null) {
+                            OSMHoleLoadResult(cached, GapFillContext.EMPTY)
+                        } else {
+                            fetchAndCacheOsmHoles(loaded, userLocation)
+                        }
                     }
                 } catch (_: Exception) {
-                    emptyList()
+                    OSMHoleLoadResult(emptyList(), GapFillContext.EMPTY)
                 }
-            if (osmHoles.none { CourseLoaderSupport.isMappedOsmHole(it) }) return null
+            if (result.holes.none { CourseLoaderSupport.isMappedOsmHole(it) }) return null
 
-            val merged = OSMHoleParser.mergeHoles(loaded.holes, osmHoles, loaded.scorecard)
+            val merged =
+                OSMHoleParser.mergeHoles(
+                    baseline = loaded.holes,
+                    osm = result.holes,
+                    scorecard = loaded.scorecard,
+                    gapContext = result.gapFillContext,
+                )
+            if (!CourseCacheValidation.osmHolesMatchCourse(merged, summary) &&
+                result.holes.none { CourseLoaderSupport.isMappedOsmHole(it) }
+            ) {
+                return null
+            }
             return loaded.copy(holes = merged)
         }
 
         private suspend fun fetchAndCacheOsmHoles(
             loaded: LoadedCourse,
             userLocation: LatLng?,
-        ): List<HoleTarget> {
+        ): OSMHoleLoadResult {
             val summary = loaded.summary
-            val holes =
-                osmGolfSource.loadHoleTargets(
-                    courseCenter = LatLng(summary.latitude, summary.longitude),
-                    osmCourseId = summary.osmId,
-                    courseName = summary.name,
-                    scorecard = loaded.scorecard,
-                    userLocation = userLocation,
-                )
-            val mapped = holes.filter { CourseLoaderSupport.isMappedOsmHole(it) }
-            if (mapped.isNotEmpty()) {
-                cache.saveOsmHoles(summary.id, summary, mapped)
+            var lastError: Exception? = null
+            repeat(OSM_NETWORK_ATTEMPTS) { attempt ->
+                try {
+                    val result =
+                        osmGolfSource.loadHoleTargets(
+                            courseCenter = LatLng(summary.latitude, summary.longitude),
+                            osmCourseId = summary.osmId,
+                            courseName = summary.name,
+                            scorecard = loaded.scorecard,
+                            userLocation = userLocation,
+                        )
+                    val mapped = result.holes.filter { CourseLoaderSupport.isMappedOsmHole(it) }
+                    if (mapped.isNotEmpty() && CourseCacheValidation.osmHolesMatchCourse(mapped, summary)) {
+                        cache.saveOsmHoles(summary.id, summary, mapped)
+                    }
+                    return result
+                } catch (e: Exception) {
+                    lastError = e
+                    if (attempt < OSM_NETWORK_ATTEMPTS - 1) {
+                        delay(OSM_RETRY_DELAY_MS)
+                    }
+                }
             }
-            return holes
+            val cached = cache.validatedCachedOsmHoles(summary)
+            if (cached != null) return OSMHoleLoadResult(cached, GapFillContext.EMPTY)
+            throw lastError ?: IllegalStateException("OSM enrichment failed")
+        }
+
+        companion object {
+            private const val OSM_NETWORK_ATTEMPTS = 2
+            private const val OSM_RETRY_DELAY_MS = 1_000L
         }
     }

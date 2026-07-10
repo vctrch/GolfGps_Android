@@ -123,6 +123,11 @@ fun ActiveRoundScreen(
                 onSelectHole = onSelectHole,
             )
             Text(
+                hole.greenMappingConfidence.detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
                 "OpenGolfAPI · OpenStreetMap",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

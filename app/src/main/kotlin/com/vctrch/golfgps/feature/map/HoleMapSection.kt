@@ -9,8 +9,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vctrch.golfgps.domain.*
 
@@ -24,6 +26,7 @@ fun HoleMapSection(
 ) {
     val context = LocalContext.current
     val mapBackend = remember { resolveMapBackend(context) }
+    val waitingForMap = !hole.hasReliableGreenPosition
 
     Box(
         modifier =
@@ -32,21 +35,23 @@ fun HoleMapSection(
                 .height(340.dp)
                 .clip(RoundedCornerShape(20.dp)),
     ) {
-        when (mapBackend) {
-            MapBackend.GOOGLE ->
-                GoogleHoleMap(
-                    hole = hole,
-                    userLocation = userLocation,
-                    mapDisplayStyle = mapDisplayStyle,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            MapBackend.OPEN_STREET_MAP ->
-                OsmHoleMap(
-                    hole = hole,
-                    userLocation = userLocation,
-                    mapDisplayStyle = mapDisplayStyle,
-                    modifier = Modifier.fillMaxSize(),
-                )
+        Box(modifier = Modifier.fillMaxSize().alpha(if (waitingForMap) 0.45f else 1f)) {
+            when (mapBackend) {
+                MapBackend.GOOGLE ->
+                    GoogleHoleMap(
+                        hole = hole,
+                        userLocation = userLocation,
+                        mapDisplayStyle = mapDisplayStyle,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                MapBackend.OPEN_STREET_MAP ->
+                    OsmHoleMap(
+                        hole = hole,
+                        userLocation = userLocation,
+                        mapDisplayStyle = mapDisplayStyle,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+            }
         }
 
         Text(
@@ -64,6 +69,18 @@ fun HoleMapSection(
             onMapDisplayStyleChange = onMapDisplayStyleChange,
             modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
         )
+        if (waitingForMap) {
+            Text(
+                text = "Hole map loading",
+                modifier =
+                    Modifier
+                        .align(Alignment.Center)
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
         if (mapBackend == MapBackend.OPEN_STREET_MAP) {
             Text(
                 text = "© OpenStreetMap",

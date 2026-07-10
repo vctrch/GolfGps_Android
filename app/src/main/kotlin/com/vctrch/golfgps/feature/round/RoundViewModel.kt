@@ -159,25 +159,49 @@ class RoundViewModel
                         courseLoadError = null,
                         errorMessage = null,
                         lastSelectedCourse = course,
+                        loadedCourse = null,
                     )
                 }
+                osmEnhancementJob?.cancel()
+                osmEnhancementGeneration += 1
+                osmRefinementAttempts = 0
+                lastOsmRefinementAtMs = 0L
+
+                var displayedCachedCourse = false
+                courseRepository.cachedBasics(course)?.takeIf { it.holes.isNotEmpty() }?.let { cached ->
+                    displayedCachedCourse = true
+                    analytics.logRoundStarted(course, cached.holes.size)
+                    _uiState.update {
+                        it.copy(
+                            isLoadingCourse = false,
+                            loadedCourse = cached,
+                            selectedHoleNumber = cached.holes.firstOrNull()?.number ?: 1,
+                            courseLoadError = null,
+                        )
+                    }
+                }
+
                 try {
                     var loaded = courseRepository.loadCourseBasics(course)
                     if (loaded.holes.isEmpty()) {
                         loaded = courseRepository.enrichWithOsmGreens(loaded) ?: loaded
                     }
                     if (loaded.holes.isEmpty()) {
-                        _uiState.update {
-                            it.copy(
-                                isLoadingCourse = false,
-                                courseLoadError = "No hole data is available for this course yet.",
-                            )
+                        if (!displayedCachedCourse) {
+                            _uiState.update {
+                                it.copy(
+                                    isLoadingCourse = false,
+                                    courseLoadError = "No hole data is available for this course yet.",
+                                )
+                            }
+                        } else {
+                            _uiState.update { it.copy(isLoadingCourse = false) }
                         }
                         return@launch
                     }
-                    osmRefinementAttempts = 0
-                    lastOsmRefinementAtMs = 0L
-                    analytics.logRoundStarted(course, loaded.holes.size)
+                    if (!displayedCachedCourse) {
+                        analytics.logRoundStarted(course, loaded.holes.size)
+                    }
                     _uiState.update {
                         it.copy(
                             isLoadingCourse = false,
@@ -187,12 +211,17 @@ class RoundViewModel
                         )
                     }
                     beginBackgroundHoleGPSRefresh(force = false)
-                } catch (_: Exception) {
-                    _uiState.update {
-                        it.copy(
-                            isLoadingCourse = false,
-                            courseLoadError = "Couldn't load course. Check your connection and try again.",
-                        )
+                } catch (e: Exception) {
+                    if (!displayedCachedCourse) {
+                        _uiState.update {
+                            it.copy(
+                                isLoadingCourse = false,
+                                courseLoadError = friendlyCourseLoadMessage(e),
+                            )
+                        }
+                    } else {
+                        _uiState.update { it.copy(isLoadingCourse = false) }
+                        beginBackgroundHoleGPSRefresh(force = false)
                     }
                 }
             }
@@ -275,7 +304,7 @@ class RoundViewModel
                     selectedHoleNumber = 1,
                     courseLoadError = null,
                     isEnhancingHoles = false,
-                    lastSelectedCourse = null,
+                    // Keep lastSelectedCourse so search can offer "Improve {course}".
                 )
             }
         }
@@ -329,17 +358,66 @@ class RoundViewModel
                         if (searchId != activeSearchId) return@launch
                         analytics.logSearch(query, results.size)
                         _uiState.update { it.copy(searchResults = results, isSearching = false) }
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
                         if (searchId != activeSearchId) return@launch
+                        if (isIgnorableSearchError(e)) return@launch
                         _uiState.update {
                             it.copy(
                                 isSearching = false,
-                                errorMessage = "Search failed. Try again.",
+                                errorMessage = friendlySearchMessage(e),
                                 searchResults = emptyList(),
                             )
                         }
                     }
                 }
+        }
+
+        private fun isIgnorableSearchError(error: Throwable): Boolean {
+            return error is kotlinx.coroutines.CancellationException
+        }
+
+        private fun friendlyCourseLoadMessage(error: Throwable): String {
+            return when {
+                isOfflineError(error) -> "No internet connection. Check your network and try again."
+                isTimeoutError(error) -> "The request timed out. Try again."
+                else -> "Couldn't load course. Check your connection and try again."
+            }
+        }
+
+        private fun friendlySearchMessage(error: Throwable): String {
+            return when {
+                isOfflineError(error) -> "No internet connection. Check your network and try again."
+                isTimeoutError(error) -> "The request timed out. Try again."
+                else -> "Search failed. Try again."
+            }
+        }
+
+        private fun isOfflineError(error: Throwable): Boolean {
+            var current: Throwable? = error
+            while (current != null) {
+                if (current is java.net.UnknownHostException ||
+                    current is java.net.ConnectException ||
+                    current.message?.contains("Unable to resolve host", ignoreCase = true) == true
+                ) {
+                    return true
+                }
+                current = current.cause
+            }
+            return false
+        }
+
+        private fun isTimeoutError(error: Throwable): Boolean {
+            var current: Throwable? = error
+            while (current != null) {
+                if (current is java.net.SocketTimeoutException ||
+                    current is kotlinx.coroutines.TimeoutCancellationException ||
+                    current.message?.contains("timeout", ignoreCase = true) == true
+                ) {
+                    return true
+                }
+                current = current.cause
+            }
+            return false
         }
 
         companion object {

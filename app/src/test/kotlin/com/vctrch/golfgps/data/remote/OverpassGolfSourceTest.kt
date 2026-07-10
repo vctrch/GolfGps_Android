@@ -58,7 +58,7 @@ class OverpassGolfSourceTest {
                     osmCourseId = 123L,
                     courseName = "Test Course",
                     scorecard = listOf(ScorecardHole(1, 4, null)),
-                )
+                ).holes
 
             assertEquals(1, holes.size)
             assertEquals(1, holes.first().number)
@@ -77,7 +77,7 @@ class OverpassGolfSourceTest {
                     osmCourseId = 123L,
                     courseName = "Test Course",
                     scorecard = listOf(ScorecardHole(1, 4, null)),
-                )
+                ).holes
 
             assertTrue(holes.isEmpty())
         }

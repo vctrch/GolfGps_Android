@@ -207,7 +207,7 @@ private fun summarySubtitle(course: LoadedCourse): String {
         listOfNotNull(
             course.teeOnMapCount.takeIf { it > 0 }?.let { "$it mapped tee boxes" },
             course.teePossibleCount.takeIf { it > 0 }?.let { "$it possible tees" },
-            course.teeNotOnMapCount.takeIf { it > 0 }?.let { "$it no tee on map" },
+            course.teeNotOnMapCount.takeIf { it > 0 }?.let { "$it without a mapped tee" },
         )
     val greens = greenParts.joinToString(" · ").ifEmpty { "Checking hole map…" }
     val tees = teeParts.joinToString(" · ").ifEmpty { "No tee positions yet" }

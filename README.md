@@ -61,24 +61,29 @@ app/src/main/kotlin/com/vctrch/golfgps/
 **Working:**
 
 - Debounced OpenGolf course search
-- Lazy course load: scorecard + Room cache, then background OSM enrichment
+- Lazy course load with instant cached-round open, then background refresh
+- Course cache validation (rejects wrong-facility / drifted OSM geometry)
 - OpenGolf published tee yardages merged into the scorecard
 - Orphan OSM tee matching using published yardages (`TAGGED` / `MATCHED` / fairway sources)
+- Gap-fill context through OSM load → merge (orphan greens/tees for inferred holes)
 - Live yards-to-green (gated to on-hole GPS) and yards-to-tee when mapped
+- GPS fix quality filtering (stale / inaccurate / regressive fixes)
 - Mapping confidence badges, confidence-colored hole picker, Course mapping card
 - Location banners (services off / permission / waiting GPS / precise location)
 - Round unavailable screen with retry when course load fails
-- OSM Overpass + hole parser merge / gap-fill pipeline
+- OSM Overpass retry + hole parser merge / gap-fill pipeline
 - Dual maps (Google release / OSM debug) with Standard / Satellite / Hybrid
-- Offline basics and OSM hole merge from Room
+- Unmapped-hole map loading overlay
+- Offline basics and validated OSM hole merge from Room
 - Reload hole GPS + bounded OSM refinement on location / hole change
-- Search info cards (data sources + help map a course) and Play Billing tips
-- Firebase Analytics events (search, course select, round start/end, hole, OSM, reload)
-- Unit tests for GeoMath, parser, tee yardages, tee matcher, cache, and ViewModel
+- Search info cards (data sources + help map a course, including recent course)
+- Play Billing tips and Firebase Analytics events
+- Unit tests for GeoMath, parser, tee yardages, tee matcher, cache validation, location filter, and ViewModel
 
 **Still to come:**
 
 - Android Auto (separate branch)
+- CommunityGolf user-facing rebrand (in progress separately)
 
 ## Map style
 

@@ -446,6 +446,7 @@ object OSMHoleParser {
     fun fillGapHoles(
         allHoles: List<HoleTarget>,
         scorecard: List<ScorecardHole>,
+        gapContext: GapFillContext = GapFillContext.EMPTY,
     ): List<HoleTarget> {
         if (scorecard.isEmpty()) return allHoles
         val mapped = allHoles.filter { it.hasReliableGreenPosition }
@@ -455,7 +456,7 @@ object OSMHoleParser {
             fillSequentialGaps(
                 holes = mapped,
                 scorecard = scorecard,
-                unnumberedGreens = emptyList(),
+                unnumberedGreens = gapContext.unnumberedGreens,
                 trustCourseArea = true,
             )
         val gapByNumber = gapFilled.associateBy { it.number }
@@ -522,12 +523,65 @@ object OSMHoleParser {
         baseline: List<HoleTarget>,
         osm: List<HoleTarget>,
         scorecard: List<ScorecardHole> = emptyList(),
+        gapContext: GapFillContext = GapFillContext.EMPTY,
     ): List<HoleTarget> {
         val osmByNumber = osm.filter { it.hasReliableGreenPosition }.associateBy { it.number }
         val merged = baseline.map { hole -> osmByNumber[hole.number] ?: hole }
         val baselineNumbers = baseline.map { it.number }.toSet()
         val extra = osm.filter { it.number !in baselineNumbers }.sortedBy { it.number }
         val combined = (merged + extra).sortedBy { it.number }
-        return fillGapHoles(combined, scorecard)
+        return fillGapHoles(combined, scorecard, gapContext)
+    }
+
+    fun gapFillContext(elements: List<OverpassElement>): GapFillContext {
+        val greens = mutableListOf<LatLng>()
+        val tees = mutableListOf<LatLng>()
+        val taggedTeesByHole = mutableMapOf<Int, LatLng>()
+        for (element in elements) {
+            val tags = element.tags ?: continue
+            val holeNumber = holeNumber(tags)
+            val coordinate =
+                element.coordinate
+                    ?: GeoMath.centroid(element.geometryCoordinates)
+                    ?: continue
+            when (tags["golf"]) {
+                "green", "pin" -> {
+                    if (holeNumber == null) greens.add(coordinate)
+                }
+                "tee" -> {
+                    appendUniqueCoordinate(coordinate, tees)
+                    if (holeNumber != null) taggedTeesByHole[holeNumber] = coordinate
+                }
+            }
+        }
+        val uniqueGreens = uniqueCoordinates(greens)
+        val uniqueTees = uniqueCoordinates(tees)
+        val unnumberedTees =
+            uniqueTees.filter { coord ->
+                taggedTeesByHole.values.none { GeoMath.yards(it, coord) < 20 }
+            }
+        return GapFillContext(
+            unnumberedGreens = uniqueGreens,
+            unnumberedTees = unnumberedTees,
+            taggedTeesByHole = taggedTeesByHole,
+            allTeeCandidates = uniqueTees,
+        )
+    }
+
+    private fun appendUniqueCoordinate(
+        coordinate: LatLng,
+        results: MutableList<LatLng>,
+    ) {
+        if (results.none { GeoMath.yards(it, coordinate) < 20 }) {
+            results.add(coordinate)
+        }
+    }
+
+    private fun uniqueCoordinates(coordinates: List<LatLng>): List<LatLng> {
+        val results = mutableListOf<LatLng>()
+        for (coordinate in coordinates) {
+            appendUniqueCoordinate(coordinate, results)
+        }
+        return results
     }
 }

@@ -127,7 +127,7 @@ class RoundViewModelTest {
             val viewModel = createViewModel()
             val loaded = TestFixtures.loadedCourse()
             api.loadResult = loaded.summary to loaded.scorecard
-            val osmGreen = LatLng(40.0, -80.0)
+            val osmGreen = LatLng(loaded.summary.latitude + 0.001, loaded.summary.longitude)
             osm.holes =
                 listOf(
                     TestFixtures.holeTarget(
@@ -213,5 +213,6 @@ class RoundViewModelTest {
 
             assertNull(viewModel.uiState.value.loadedCourse)
             assertEquals(1, viewModel.uiState.value.selectedHoleNumber)
+            assertEquals(loaded.summary, viewModel.uiState.value.lastSelectedCourse)
         }
 }

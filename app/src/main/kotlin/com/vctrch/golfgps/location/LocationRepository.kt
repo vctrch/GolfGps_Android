@@ -50,6 +50,9 @@ class LocationRepository
         private val _status = MutableStateFlow(refreshStatus(hasFix = false))
         val status: StateFlow<LocationUiStatus> = _status.asStateFlow()
 
+        @Volatile
+        private var lastAcceptedLocation: LocationSample? = null
+
         fun hasLocationPermission(): Boolean {
             val fine =
                 ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
@@ -111,24 +114,40 @@ class LocationRepository
                 val callback =
                     object : LocationCallback() {
                         override fun onLocationResult(result: LocationResult) {
-                            val location = result.lastLocation ?: return
+                            val samples = result.locations.map { it.toSample() }
+                            val best =
+                                LocationFixFilter.bestLocation(samples)
+                                    ?: result.lastLocation?.toSample()
+                                    ?: return
+                            if (!LocationFixFilter.shouldAccept(best, lastAcceptedLocation)) return
+                            lastAcceptedLocation = best
                             _status.update { refreshStatus(hasFix = true) }
-                            trySend(location.toLatLng())
+                            trySend(best.toLatLng())
                         }
                     }
 
                 try {
                     fusedClient.lastLocation.addOnSuccessListener { location ->
                         location?.let {
+                            val sample = it.toSample()
+                            if (!LocationFixFilter.shouldAccept(sample, lastAcceptedLocation)) {
+                                return@addOnSuccessListener
+                            }
+                            lastAcceptedLocation = sample
                             _status.update { refreshStatus(hasFix = true) }
-                            trySend(it.toLatLng())
+                            trySend(sample.toLatLng())
                         }
                     }
                     fusedClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
                         .addOnSuccessListener { location ->
                             location?.let {
+                                val sample = it.toSample()
+                                if (!LocationFixFilter.shouldAccept(sample, lastAcceptedLocation)) {
+                                    return@addOnSuccessListener
+                                }
+                                lastAcceptedLocation = sample
                                 _status.update { refreshStatus(hasFix = true) }
-                                trySend(it.toLatLng())
+                                trySend(sample.toLatLng())
                             }
                         }
                     fusedClient.requestLocationUpdates(request, callback, Looper.getMainLooper())
@@ -137,7 +156,10 @@ class LocationRepository
                     return@callbackFlow
                 }
 
-                awaitClose { fusedClient.removeLocationUpdates(callback) }
+                awaitClose {
+                    fusedClient.removeLocationUpdates(callback)
+                    lastAcceptedLocation = null
+                }
             }
 
         private fun refreshStatus(hasFix: Boolean): LocationUiStatus {
@@ -164,4 +186,12 @@ class LocationRepository
         }
 
         private fun Location.toLatLng(): LatLng = LatLng(latitude, longitude)
+
+        private fun Location.toSample(): LocationSample =
+            LocationSample(
+                latitude = latitude,
+                longitude = longitude,
+                accuracyMeters = accuracy,
+                timeMillis = time,
+            )
     }
