@@ -49,16 +49,19 @@ object TestFixtures {
     ): OverpassElement = OverpassElement(tags = mapOf("golf" to "pin", "ref" to "$ref"), lat = lat, lon = lon)
 
     fun overpassTeeElement(
-        ref: Int,
+        ref: Int?,
         lat: Double,
         lon: Double,
-    ): OverpassElement =
-        OverpassElement(
-            id = ref.toLong() + 10_000,
-            tags = mapOf("golf" to "tee", "ref" to "$ref"),
+    ): OverpassElement {
+        val tags = mutableMapOf("golf" to "tee")
+        if (ref != null) tags["ref"] = "$ref"
+        return OverpassElement(
+            id = (ref?.toLong() ?: 0L) + 10_000,
+            tags = tags,
             lat = lat,
             lon = lon,
         )
+    }
 
     fun overpassGreenElement(
         ref: Int,

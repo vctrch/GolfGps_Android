@@ -1,15 +1,18 @@
 package com.vctrch.golfgps.feature.round
 
+import com.vctrch.golfgps.data.analytics.GolfAnalytics
 import com.vctrch.golfgps.data.local.*
 import com.vctrch.golfgps.data.repository.CourseRepository
 import com.vctrch.golfgps.domain.HoleTargetSource
 import com.vctrch.golfgps.domain.LatLng
 import com.vctrch.golfgps.location.LocationRepository
+import com.vctrch.golfgps.location.LocationUiStatus
 import com.vctrch.golfgps.testing.*
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
@@ -34,6 +37,7 @@ class RoundViewModelTest {
     private lateinit var osm: FakeOsmGolfSource
     private lateinit var repository: CourseRepository
     private lateinit var locationRepository: LocationRepository
+    private lateinit var analytics: GolfAnalytics
 
     @Before
     fun setUp() {
@@ -49,6 +53,8 @@ class RoundViewModelTest {
             )
         locationRepository = mockk(relaxed = true)
         every { locationRepository.locationUpdates() } returns emptyFlow()
+        every { locationRepository.status } returns MutableStateFlow(LocationUiStatus())
+        analytics = mockk(relaxed = true)
     }
 
     @After
@@ -61,6 +67,7 @@ class RoundViewModelTest {
             courseRepository = repository,
             userPreferencesRepository = createTestPreferencesRepository(),
             locationRepository = locationRepository,
+            analytics = analytics,
         )
     }
 
@@ -152,6 +159,27 @@ class RoundViewModelTest {
                 "Couldn't load course. Check your connection and try again.",
                 viewModel.uiState.value.courseLoadError,
             )
+            assertTrue(viewModel.uiState.value.isRoundUnavailable)
+        }
+
+    @Test
+    fun retryCourseLoad_reloadsLastSelectedCourse() =
+        runTest(dispatcher) {
+            val viewModel = createViewModel()
+            val loaded = TestFixtures.loadedCourse()
+            api.loadShouldFail = true
+
+            viewModel.selectCourse(loaded.summary)
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.isRoundUnavailable)
+
+            api.loadShouldFail = false
+            api.loadResult = loaded.summary to loaded.scorecard
+            viewModel.retryCourseLoad()
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.isRoundReady)
+            assertNull(viewModel.uiState.value.courseLoadError)
         }
 
     @Test

@@ -24,6 +24,8 @@ object OSMHoleParser {
         val par: Int?,
         // When true, tee/green were already oriented from fairway/tee/green tags — don't re-route.
         val trustOrientation: Boolean,
+        /** True when the tee came from an explicit OSM `golf=tee` for this hole. */
+        val hasTaggedTee: Boolean = false,
     )
 
     private data class NumberedCoordinate(
@@ -94,11 +96,20 @@ object OSMHoleParser {
                 playerLocation = playerLocation,
             )
         val unnumberedGreens = greens.filter { it.number == null }.map { it.coordinate }
-        return fillSequentialGaps(
-            holes = mapped,
+        val gapFilled =
+            fillSequentialGaps(
+                holes = mapped,
+                scorecard = scorecard,
+                unnumberedGreens = unnumberedGreens,
+                trustCourseArea = trustCourseArea,
+            )
+        val candidateTees = OSMHoleTeeMatcher.teeCoordinates(elements)
+        val taggedTees = OSMHoleTeeMatcher.taggedTeesByHole(elements)
+        return OSMHoleTeeMatcher.refine(
+            holes = gapFilled,
+            candidateTees = candidateTees,
+            taggedTeesByHole = taggedTees,
             scorecard = scorecard,
-            unnumberedGreens = unnumberedGreens,
-            trustCourseArea = trustCourseArea,
         )
     }
 
@@ -184,12 +195,20 @@ object OSMHoleParser {
                     green = oriented.second,
                     par = parByHole[ref],
                     trustOrientation = true,
+                    hasTaggedTee = tees[ref] != null,
                 )
             } else {
                 val tee = tees[ref]
                 val green = holeGreens[ref]
                 if (tee != null && green != null) {
-                    RawHole(ref, tee, green, parByHole[ref], trustOrientation = true)
+                    RawHole(
+                        number = ref,
+                        tee = tee,
+                        green = green,
+                        par = parByHole[ref],
+                        trustOrientation = true,
+                        hasTaggedTee = true,
+                    )
                 } else {
                     null
                 }
@@ -301,7 +320,12 @@ object OSMHoleParser {
                     number = hole.number,
                     par = hole.par ?: parByHole[hole.number],
                     tee = oriented.first,
-                    teeSource = TeeMappingSource.FAIRWAY,
+                    teeSource =
+                        if (hole.hasTaggedTee) {
+                            TeeMappingSource.TAGGED
+                        } else {
+                            TeeMappingSource.FAIRWAY
+                        },
                     green = greenCoord,
                     source = HoleTargetSource.OPEN_STREET_MAP,
                 ),

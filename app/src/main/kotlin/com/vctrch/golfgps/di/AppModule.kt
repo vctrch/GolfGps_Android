@@ -3,8 +3,11 @@ package com.vctrch.golfgps.di
 import android.content.Context
 import androidx.room.Room
 import com.vctrch.golfgps.BuildConfig
+import com.vctrch.golfgps.data.analytics.FirebaseGolfAnalytics
+import com.vctrch.golfgps.data.analytics.GolfAnalytics
 import com.vctrch.golfgps.data.local.*
 import com.vctrch.golfgps.data.remote.*
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -19,6 +22,14 @@ import io.ktor.client.plugins.logging.Logging
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import javax.inject.Singleton
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class AnalyticsModule {
+    @Binds
+    @Singleton
+    abstract fun bindGolfAnalytics(impl: FirebaseGolfAnalytics): GolfAnalytics
+}
 
 @Module
 @InstallIn(SingletonComponent::class)

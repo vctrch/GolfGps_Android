@@ -38,7 +38,15 @@ data class OpenGolfCourseDetail(
     val lng: Double? = null,
     val par: Int? = null,
     val holes: Int? = null,
+    val tees: List<OpenGolfTeeSet>? = null,
     @SerialName("holes_data") val holesData: List<OpenGolfHole>? = null,
+)
+
+@Serializable
+data class OpenGolfTeeSet(
+    @SerialName("tee_key") val teeKey: String,
+    @SerialName("tee_name") val teeName: String? = null,
+    val yardage: Int? = null,
 )
 
 @Serializable
@@ -46,6 +54,7 @@ data class OpenGolfHole(
     val number: Int? = null,
     val par: Int? = null,
     @SerialName("handicap_index") val handicapIndex: Int? = null,
+    val yardages: Map<String, Int>? = null,
 )
 
 fun OpenGolfCourseListItem.toSummary(): GolfCourseSummary {
@@ -76,12 +85,14 @@ fun OpenGolfCourseDetail.toSummary(): GolfCourseSummary =
     )
 
 fun OpenGolfCourseDetail.toScorecard(): List<ScorecardHole> {
-    return (holesData ?: emptyList())
-        .mapNotNull { hole ->
-            val number = hole.number ?: return@mapNotNull null
-            ScorecardHole(number = number, par = hole.par, handicap = hole.handicapIndex)
-        }
-        .sortedBy { it.number }
+    val base =
+        (holesData ?: emptyList())
+            .mapNotNull { hole ->
+                val number = hole.number ?: return@mapNotNull null
+                ScorecardHole(number = number, par = hole.par, handicap = hole.handicapIndex)
+            }
+            .sortedBy { it.number }
+    return OpenGolfTeeYardages.mergeYardages(base, OpenGolfTeeYardages.yardageByHole(this))
 }
 
 interface OpenGolfApi {

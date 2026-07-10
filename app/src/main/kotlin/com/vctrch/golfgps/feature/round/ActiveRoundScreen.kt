@@ -17,9 +17,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -45,6 +48,7 @@ import com.vctrch.golfgps.domain.greenMappingConfidence
 import com.vctrch.golfgps.domain.showsEstimatedQualifier
 import com.vctrch.golfgps.domain.teeMappingConfidence
 import com.vctrch.golfgps.feature.map.HoleMapSection
+import com.vctrch.golfgps.location.LocationUiStatus
 import com.vctrch.golfgps.ui.theme.GolfTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,6 +62,8 @@ fun ActiveRoundScreen(
     onPreviousHole: () -> Unit,
     onNextHole: () -> Unit,
     onReloadHoleGPS: () -> Unit,
+    onOpenLocationSettings: () -> Unit,
+    onRequestPreciseLocation: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val course = state.loadedCourse ?: return
@@ -91,7 +97,12 @@ fun ActiveRoundScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             HoleHeader(course = course, hole = hole, holeIndex = state.currentHoleIndex)
-            YardageHero(state = state, hole = hole)
+            YardageHero(
+                state = state,
+                hole = hole,
+                onOpenLocationSettings = onOpenLocationSettings,
+                onRequestPreciseLocation = onRequestPreciseLocation,
+            )
             if (state.isEnhancingHoles) {
                 HoleMapLoadingBanner()
             }
@@ -174,6 +185,8 @@ private fun HoleMapLoadingBanner() {
 private fun YardageHero(
     state: RoundUiState,
     hole: HoleTarget,
+    onOpenLocationSettings: () -> Unit,
+    onRequestPreciseLocation: () -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -269,6 +282,91 @@ private fun YardageHero(
                         )
                     }
                 }
+
+                LocationStatusBanner(
+                    status = state.locationStatus,
+                    hasUserLocation = state.userLocation != null,
+                    onOpenSettings = onOpenLocationSettings,
+                    onRequestPrecise = onRequestPreciseLocation,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LocationStatusBanner(
+    status: LocationUiStatus,
+    hasUserLocation: Boolean,
+    onOpenSettings: () -> Unit,
+    onRequestPrecise: () -> Unit,
+) {
+    when {
+        status.locationServicesDisabled -> {
+            LocationBanner(
+                message = "Location Services are off on this device.",
+                actionTitle = "Open Settings",
+                onAction = onOpenSettings,
+            )
+        }
+        status.needsSettings -> {
+            LocationBanner(
+                message = "Allow location access for live yardage.",
+                actionTitle = "Open Settings",
+                onAction = onOpenSettings,
+            )
+        }
+        status.isAuthorized && !hasUserLocation -> {
+            LocationBanner(
+                message = "Waiting for GPS — stay outdoors with a clear view of the sky.",
+                actionTitle = null,
+                onAction = null,
+            )
+        }
+        status.isAuthorized && !status.isPreciseLocationEnabled -> {
+            LocationBanner(
+                message = "Precise Location is off — yardage may be inaccurate.",
+                actionTitle = "Enable Precise",
+                onAction = onRequestPrecise,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LocationBanner(
+    message: String,
+    actionTitle: String?,
+    onAction: (() -> Unit)?,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
+                .padding(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Icon(
+            Icons.Default.LocationOff,
+            contentDescription = null,
+            tint = Color(0xFFFFB74D),
+            modifier = Modifier.size(18.dp),
+        )
+        Text(
+            message,
+            color = Color(0xFFFFB74D),
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.weight(1f),
+        )
+        if (actionTitle != null && onAction != null) {
+            TextButton(
+                onClick = onAction,
+                colors = ButtonDefaults.textButtonColors(contentColor = Color.White),
+            ) {
+                Text(actionTitle, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
             }
         }
     }

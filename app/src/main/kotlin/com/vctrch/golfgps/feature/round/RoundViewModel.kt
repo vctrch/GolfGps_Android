@@ -2,10 +2,12 @@ package com.vctrch.golfgps.feature.round
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.vctrch.golfgps.data.analytics.GolfAnalytics
 import com.vctrch.golfgps.data.local.UserPreferencesRepository
 import com.vctrch.golfgps.data.repository.CourseRepository
 import com.vctrch.golfgps.domain.*
 import com.vctrch.golfgps.location.LocationRepository
+import com.vctrch.golfgps.location.LocationUiStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -28,12 +30,16 @@ data class RoundUiState(
     val errorMessage: String? = null,
     val courseLoadError: String? = null,
     val loadedCourse: LoadedCourse? = null,
+    val lastSelectedCourse: GolfCourseSummary? = null,
     val selectedHoleNumber: Int = 1,
     val userLocation: LatLng? = null,
+    val locationStatus: LocationUiStatus = LocationUiStatus(),
 ) {
     val trimmedSearchQuery: String get() = searchQuery.trim()
     val isSearchActive: Boolean get() = trimmedSearchQuery.length >= MINIMUM_SEARCH_QUERY_LENGTH
     val isRoundReady: Boolean get() = loadedCourse != null && currentHole != null
+    val isRoundUnavailable: Boolean
+        get() = courseLoadError != null && loadedCourse == null && lastSelectedCourse != null
     val currentHole: HoleTarget?
         get() = loadedCourse?.holes?.firstOrNull { it.number == selectedHoleNumber }
 
@@ -73,6 +79,7 @@ class RoundViewModel
         private val courseRepository: CourseRepository,
         private val userPreferencesRepository: UserPreferencesRepository,
         private val locationRepository: LocationRepository,
+        private val analytics: GolfAnalytics,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(RoundUiState())
         val uiState: StateFlow<RoundUiState> = _uiState.asStateFlow()
@@ -94,15 +101,28 @@ class RoundViewModel
 
         init {
             observeLocation()
+            viewModelScope.launch {
+                locationRepository.status.collect { status ->
+                    _uiState.update { it.copy(locationStatus = status) }
+                }
+            }
         }
 
-        /**
-         * Re-subscribes to location updates. Called once on creation and again after the location
-         * permission is granted, because the initial subscription emits nothing until permission
-         * exists.
-         */
         fun refreshLocationUpdates() {
+            locationRepository.refreshPermissionStatus()
             observeLocation()
+        }
+
+        fun openLocationSettings() {
+            if (_uiState.value.locationStatus.locationServicesDisabled) {
+                locationRepository.openLocationSettings()
+            } else {
+                locationRepository.openAppSettings()
+            }
+        }
+
+        fun requestPreciseLocation() {
+            locationRepository.requestPreciseLocationIfNeeded()
         }
 
         private fun observeLocation() {
@@ -111,7 +131,7 @@ class RoundViewModel
                 viewModelScope.launch {
                     locationRepository
                         .locationUpdates()
-                        .catch { /* Ignore location errors (e.g. permission revoked); keep last fix. */ }
+                        .catch { /* Ignore location errors; keep last fix. */ }
                         .collect { location ->
                             _uiState.update { it.copy(userLocation = location) }
                             if (location != null) {
@@ -131,14 +151,18 @@ class RoundViewModel
         }
 
         fun selectCourse(course: GolfCourseSummary) {
+            analytics.logCourseSelected(course)
             viewModelScope.launch {
                 _uiState.update {
-                    it.copy(isLoadingCourse = true, courseLoadError = null, errorMessage = null)
+                    it.copy(
+                        isLoadingCourse = true,
+                        courseLoadError = null,
+                        errorMessage = null,
+                        lastSelectedCourse = course,
+                    )
                 }
                 try {
                     var loaded = courseRepository.loadCourseBasics(course)
-                    // The scorecard may carry no holes; OSM might still have them, so try enriching
-                    // before deciding there is nothing to show.
                     if (loaded.holes.isEmpty()) {
                         loaded = courseRepository.enrichWithOsmGreens(loaded) ?: loaded
                     }
@@ -153,11 +177,13 @@ class RoundViewModel
                     }
                     osmRefinementAttempts = 0
                     lastOsmRefinementAtMs = 0L
+                    analytics.logRoundStarted(course, loaded.holes.size)
                     _uiState.update {
                         it.copy(
                             isLoadingCourse = false,
                             loadedCourse = loaded,
                             selectedHoleNumber = loaded.holes.firstOrNull()?.number ?: 1,
+                            courseLoadError = null,
                         )
                     }
                     beginBackgroundHoleGPSRefresh(force = false)
@@ -172,9 +198,14 @@ class RoundViewModel
             }
         }
 
-        /** Manual reload — mirrors iOS toolbar refresh. */
+        fun retryCourseLoad() {
+            val course = _uiState.value.lastSelectedCourse ?: return
+            selectCourse(course)
+        }
+
         fun reloadHoleGPS() {
-            if (_uiState.value.loadedCourse == null) return
+            val courseId = _uiState.value.loadedCourse?.summary?.id ?: return
+            analytics.logReloadHoleGps(courseId)
             beginBackgroundHoleGPSRefresh(force = true)
         }
 
@@ -212,6 +243,11 @@ class RoundViewModel
                                 userLocation = searchNear,
                             ) ?: return@launch
                         if (generation != osmEnhancementGeneration) return@launch
+                        analytics.logOsmEnrichment(
+                            courseId = enriched.summary.id,
+                            mappedHoleCount = enriched.holes.count { it.hasReliableGreenPosition },
+                            forced = force,
+                        )
                         _uiState.update { state ->
                             if (state.loadedCourse?.summary?.id == enriched.summary.id) {
                                 state.copy(loadedCourse = enriched)
@@ -228,6 +264,7 @@ class RoundViewModel
         }
 
         fun endRound() {
+            analytics.logRoundEnded(_uiState.value.loadedCourse?.summary?.id)
             osmEnhancementJob?.cancel()
             osmEnhancementGeneration += 1
             osmRefinementAttempts = 0
@@ -238,11 +275,13 @@ class RoundViewModel
                     selectedHoleNumber = 1,
                     courseLoadError = null,
                     isEnhancingHoles = false,
+                    lastSelectedCourse = null,
                 )
             }
         }
 
         fun selectHole(number: Int) {
+            analytics.logHoleSelected(number)
             _uiState.update { it.copy(selectedHoleNumber = number) }
             _uiState.value.userLocation?.let { refineHoleGPSIfNeeded(it) }
         }
@@ -288,6 +327,7 @@ class RoundViewModel
                     try {
                         val results = courseRepository.searchCourses(query)
                         if (searchId != activeSearchId) return@launch
+                        analytics.logSearch(query, results.size)
                         _uiState.update { it.copy(searchResults = results, isSearching = false) }
                     } catch (_: Exception) {
                         if (searchId != activeSearchId) return@launch

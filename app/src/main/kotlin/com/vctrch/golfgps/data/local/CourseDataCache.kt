@@ -12,6 +12,7 @@ data class PersistedScorecardHole(
     val number: Int,
     val par: Int? = null,
     val handicap: Int? = null,
+    val yardage: Int? = null,
 )
 
 @Serializable
@@ -137,13 +138,21 @@ class CourseDataCache(
     }
 
     private fun encodeScorecard(scorecard: List<ScorecardHole>): String {
-        val payload = scorecard.map { PersistedScorecardHole(it.number, it.par, it.handicap) }
+        val payload =
+            scorecard.map {
+                PersistedScorecardHole(it.number, it.par, it.handicap, it.yardage)
+            }
         return json.encodeToString(payload)
     }
 
     private fun decodeScorecard(data: String): List<ScorecardHole> {
         return json.decodeFromString<List<PersistedScorecardHole>>(data).map {
-            ScorecardHole(number = it.number, par = it.par, handicap = it.handicap)
+            ScorecardHole(
+                number = it.number,
+                par = it.par,
+                handicap = it.handicap,
+                yardage = it.yardage,
+            )
         }
     }
 

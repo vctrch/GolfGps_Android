@@ -27,6 +27,8 @@ data class ScorecardHole(
     val number: Int,
     val par: Int?,
     val handicap: Int?,
+    /** Published yardage for the default tee set (OpenGolf api/v1), used to place OSM tee boxes. */
+    val yardage: Int? = null,
 )
 
 data class HoleTarget(
