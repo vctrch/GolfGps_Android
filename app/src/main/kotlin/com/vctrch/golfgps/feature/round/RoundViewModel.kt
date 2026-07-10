@@ -6,6 +6,7 @@ import com.vctrch.golfgps.data.analytics.GolfAnalytics
 import com.vctrch.golfgps.data.local.UserPreferencesRepository
 import com.vctrch.golfgps.data.repository.CourseRepository
 import com.vctrch.golfgps.domain.*
+import com.vctrch.golfgps.feature.auto.ActiveRoundSession
 import com.vctrch.golfgps.location.LocationRepository
 import com.vctrch.golfgps.location.LocationUiStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -80,6 +82,7 @@ class RoundViewModel
         private val userPreferencesRepository: UserPreferencesRepository,
         private val locationRepository: LocationRepository,
         private val analytics: GolfAnalytics,
+        private val activeRoundSession: ActiveRoundSession,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(RoundUiState())
         val uiState: StateFlow<RoundUiState> = _uiState.asStateFlow()
@@ -91,6 +94,11 @@ class RoundViewModel
                 MapDisplayStyle.STANDARD,
             )
 
+        val isAndroidAutoConnected: StateFlow<Boolean> =
+            activeRoundSession.snapshot
+                .map { it.isAutoConnected }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
         private var searchJob: Job? = null
         private var activeSearchId = 0
         private var locationJob: Job? = null
@@ -101,11 +109,29 @@ class RoundViewModel
 
         init {
             observeLocation()
+            activeRoundSession.bindHoleActions(
+                onPrevious = { previousHole() },
+                onNext = { nextHole() },
+            )
             viewModelScope.launch {
                 locationRepository.status.collect { status ->
                     _uiState.update { it.copy(locationStatus = status) }
                 }
             }
+            viewModelScope.launch {
+                uiState.collect { state ->
+                    activeRoundSession.publish(
+                        loadedCourse = state.loadedCourse,
+                        selectedHoleNumber = state.selectedHoleNumber,
+                        userLocation = state.userLocation,
+                    )
+                }
+            }
+        }
+
+        override fun onCleared() {
+            activeRoundSession.unbindHoleActions()
+            super.onCleared()
         }
 
         fun refreshLocationUpdates() {

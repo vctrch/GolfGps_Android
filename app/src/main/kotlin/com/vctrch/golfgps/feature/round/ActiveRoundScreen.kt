@@ -64,6 +64,7 @@ fun ActiveRoundScreen(
     onReloadHoleGPS: () -> Unit,
     onOpenLocationSettings: () -> Unit,
     onRequestPreciseLocation: () -> Unit,
+    isAndroidAutoConnected: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val course = state.loadedCourse ?: return
@@ -97,6 +98,9 @@ fun ActiveRoundScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             HoleHeader(course = course, hole = hole, holeIndex = state.currentHoleIndex)
+            if (isAndroidAutoConnected) {
+                AndroidAutoConnectedBanner()
+            }
             YardageHero(
                 state = state,
                 hole = hole,
@@ -163,6 +167,26 @@ private fun HoleHeader(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+@Composable
+private fun AndroidAutoConnectedBanner() {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(GolfTheme.Fairway.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "Showing on Android Auto",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = GolfTheme.Fairway,
+        )
     }
 }
 

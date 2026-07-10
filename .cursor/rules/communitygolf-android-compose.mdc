@@ -42,6 +42,7 @@ app/src/main/kotlin/com/vctrch/golfgps/
     search/        Course search + info cards
     round/         Active round, mapping UI, unavailable/retry, ViewModel
     map/           Google / OSM hole maps
+    auto/          Android Auto (POI templates + ActiveRoundSession)
     support/       Developer tip card
   ui/theme/        Material 3 theme
   di/              Hilt modules

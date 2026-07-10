@@ -53,6 +53,7 @@ app/src/main/kotlin/com/vctrch/golfgps/
     search/        Course search + info cards
     round/         Active round, mapping UI, unavailable/retry, ViewModel
     map/           Google/OSM hole maps
+    auto/          Android Auto (POI templates + ActiveRoundSession)
     support/       Developer tip card
 ```
 
@@ -78,16 +79,18 @@ app/src/main/kotlin/com/vctrch/golfgps/
 - Reload hole GPS + bounded OSM refinement on location / hole change
 - Search info cards (data sources + help map a course, including recent course)
 - Play Billing tips and Firebase Analytics events
-- Unit tests for GeoMath, parser, tee yardages, tee matcher, cache validation, location filter, and ViewModel
+- Android Auto POI templates (idle + active round yardage / hole nav on the dash)
+- Unit tests for GeoMath, parser, tee yardages, tee matcher, cache validation, location filter, Auto session, and ViewModel
 
 **Still to come:**
 
-- Android Auto (separate branch)
 - CommunityGolf user-facing rebrand (in progress separately)
 
-## Map style
+## Map style and Android Auto
 
 The map style preference on the round map is stored in **DataStore** and surfaced through a picker in the top-right corner of the hole map. Debug builds use OSM tiles so the map works on emulators without a Google Maps API key; release builds use Google Maps when Play Services and a valid key are available.
+
+**Android Auto** uses the Car App Library POI category (`PlaceListMapTemplate`) — host-rendered map with green/tee markers and live yardage, similar in spirit to iOS CarPlay’s driving-task POI template. Start a round on the phone; the dash shows the current hole, Previous/Next, and optional tee pin. Test with the Desktop Head Unit (DHU).
 
 ## Related
 

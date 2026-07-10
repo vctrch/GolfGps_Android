@@ -5,6 +5,7 @@ import com.vctrch.golfgps.data.local.*
 import com.vctrch.golfgps.data.repository.CourseRepository
 import com.vctrch.golfgps.domain.HoleTargetSource
 import com.vctrch.golfgps.domain.LatLng
+import com.vctrch.golfgps.feature.auto.ActiveRoundSession
 import com.vctrch.golfgps.location.LocationRepository
 import com.vctrch.golfgps.location.LocationUiStatus
 import com.vctrch.golfgps.testing.*
@@ -38,6 +39,7 @@ class RoundViewModelTest {
     private lateinit var repository: CourseRepository
     private lateinit var locationRepository: LocationRepository
     private lateinit var analytics: GolfAnalytics
+    private lateinit var activeRoundSession: ActiveRoundSession
 
     @Before
     fun setUp() {
@@ -55,6 +57,7 @@ class RoundViewModelTest {
         every { locationRepository.locationUpdates() } returns emptyFlow()
         every { locationRepository.status } returns MutableStateFlow(LocationUiStatus())
         analytics = mockk(relaxed = true)
+        activeRoundSession = ActiveRoundSession()
     }
 
     @After
@@ -68,6 +71,7 @@ class RoundViewModelTest {
             userPreferencesRepository = createTestPreferencesRepository(),
             locationRepository = locationRepository,
             analytics = analytics,
+            activeRoundSession = activeRoundSession,
         )
     }
 
