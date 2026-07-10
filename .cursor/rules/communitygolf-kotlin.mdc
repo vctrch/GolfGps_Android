@@ -1,0 +1,48 @@
+---
+description: Kotlin language and concurrency conventions for CommunityGolf Android
+globs: "**/*.kt,**/*.kts"
+alwaysApply: false
+---
+
+# Kotlin (CommunityGolf)
+
+Apply Kotlin idioms that match this codebase. Keep changes small and consistent with neighboring files. The app ships to users as **CommunityGolf**; follow existing source names/packages until the code rebrand.
+
+## Style
+
+- Prefer `val`, immutability, and **data classes** for models/DTOs/UI state.
+- Use expressive names; avoid abbreviations except established ones (`Osm`, `Gps`, `Ui`).
+- Prefer `sealed class` / `enum class` for finite states (mapping confidence, map backend, etc.).
+- Extension functions for domain helpers when they clarify call sites (`HoleTarget.playerYardsToGreen`).
+- Wildcard imports are allowed here (ktlint `no-wildcard-imports` is disabled); follow nearby files.
+- Match the app module’s JVM target and Kotlin toolchain in `app/build.gradle.kts` / the version catalog — do not invent a different baseline in new modules.
+- Gradle Kotlin DSL for build scripts. Library and plugin versions live only in `gradle/libs.versions.toml` (exact pins there; no dynamic ranges).
+
+## Null safety & errors
+
+- Prefer explicit null handling (`?.`, `?:`, early `return`) over `!!`.
+- Domain/network failures: use existing exception types (e.g. `GolfDataException`) or clear user-facing messages in UI state — do not swallow errors silently unless the call site already does (e.g. location stream).
+- Avoid broad `catch (Exception)` unless matching an existing ViewModel pattern that maps to UI error state.
+
+## Coroutines & concurrency
+
+- Structured concurrency only; cancel work with `Job` / scope lifecycle.
+- Mark IO-bound APIs `suspend`; collect cold `Flow`s in a known scope.
+- Do not expose mutable shared state from repositories without a clear owner (`StateFlow` / Room / DataStore).
+- Prefer `Dispatchers.IO` only at the boundary that needs it; ViewModels should not hard-code dispatchers when tests inject `Main`.
+
+## Serialization & APIs
+
+- kotlinx.serialization for remote models (`@Serializable`, `@SerialName` for snake_case JSON).
+- Keep OpenGolf / Overpass DTOs in `data/remote`; map to `domain` models at the boundary.
+- Ktor client is shared via Hilt; do not create ad-hoc clients in features.
+
+## Dependency injection & testability
+
+- Constructor injection; depend on interfaces/abstractions already used (`OpenGolfApi`, `OsmGolfSource`, `GolfAnalytics`).
+- New collaborators should be easy to fake in unit tests (see `FakeOpenGolfApi`, `FakeOsmGolfSource`).
+
+## Principles
+
+- SOLID / DRY / KISS / YAGNI — prefer the smallest change that fits existing architecture.
+- Do not add Spring, Koin, Exposed, or server-Ktor patterns; this is a client app with Hilt + Ktor **client**.
