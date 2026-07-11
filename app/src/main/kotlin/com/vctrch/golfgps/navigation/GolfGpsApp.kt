@@ -27,6 +27,7 @@ fun GolfGpsApp() {
         RequestLocationPermissionOnLaunch(onPermissionGranted = viewModel::refreshLocationUpdates)
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         val mapDisplayStyle by viewModel.mapDisplayStyle.collectAsStateWithLifecycle()
+        val isAndroidAutoConnected by viewModel.isAndroidAutoConnected.collectAsStateWithLifecycle()
 
         when {
             state.isLoadingCourse -> {
@@ -46,6 +47,7 @@ fun GolfGpsApp() {
                     onReloadHoleGPS = viewModel::reloadHoleGPS,
                     onOpenLocationSettings = viewModel::openLocationSettings,
                     onRequestPreciseLocation = viewModel::requestPreciseLocation,
+                    isAndroidAutoConnected = isAndroidAutoConnected,
                 )
             }
             state.isRoundUnavailable -> {
