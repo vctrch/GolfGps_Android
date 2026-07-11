@@ -1,0 +1,41 @@
+---
+description: Agent acts as a GitHub contributor for push/PR — not the human owner
+alwaysApply: true
+---
+
+# Agent pull requests (contributor identity)
+
+Agents open PRs as a **dedicated GitHub contributor**, not as the repo owner’s personal account.
+
+## Auth
+
+- Prefer `GH_TOKEN` (or `GITHUB_TOKEN`) for a **machine / bot user** with write access to this repo.
+- Prefer HTTPS `origin` (`https://github.com/vctrch/GolfGps_Android.git`) so token auth works.
+- Load local secrets from `.cursor/agent.env` when present (gitignored). Never commit tokens.
+- If `GH_TOKEN` is unset and `gh` / push fails, stop and tell the human to finish [Agent GitHub setup](agent-github-setup.md) — do not use their personal SSH key as a substitute “fix”.
+
+## Identity on commits
+
+When creating commits that will be pushed for an agent PR, set author/committer for that commit only (no `git config`):
+
+```bash
+GIT_AUTHOR_NAME="CommunityGolf Agent"
+GIT_AUTHOR_EMAIL="communitygolf-agent@users.noreply.github.com"
+GIT_COMMITTER_NAME="CommunityGolf Agent"
+GIT_COMMITTER_EMAIL="communitygolf-agent@users.noreply.github.com"
+```
+
+Use the real bot account’s noreply email once the machine user exists (update this rule if the login changes).
+
+## PR workflow
+
+1. Branch from the requested base (often `develop` or a feature branch).
+2. Commit only with user approval (or when they asked to submit a PR).
+3. `git push -u origin HEAD` then `gh pr create --base <base>`.
+4. Return the PR URL.
+5. Do not merge unless asked.
+
+## Safety
+
+- Never force-push shared branches (`main`, `master`, `develop`).
+- Never put PATs, `.cursor/agent.env`, or key material in the repo or PR body.

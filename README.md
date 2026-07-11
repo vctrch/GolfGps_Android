@@ -88,6 +88,10 @@ The map style preference on the round map is stored in **DataStore** and surface
 
 **Android Auto** uses the Car App Library POI category (`PlaceListMapTemplate`) — host-rendered map with green/tee markers and live yardage, similar in spirit to iOS CarPlay’s driving-task POI template. Start a round on the phone; the dash shows the current hole, Previous/Next, and optional tee pin. Test with the Desktop Head Unit (DHU).
 
+## Agent contributors
+
+Cursor agents open PRs as a dedicated GitHub user (not the repo owner). One-time setup: [`.cursor/agent-github-setup.md`](.cursor/agent-github-setup.md).
+
 ## Related
 
 - Companion iOS app: [vctrch/GolfGps](https://github.com/vctrch/GolfGps)
