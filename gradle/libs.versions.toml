@@ -26,6 +26,9 @@ junit = "4.13.2"
 androidxJunit = "1.2.1"
 espresso = "3.6.1"
 carApp = "1.7.0"
+firebaseBom = "34.15.0"
+googleServices = "4.5.0"
+firebaseCrashlyticsGradle = "3.0.6"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -71,6 +74,9 @@ androidx-espresso-core = { module = "androidx.test.espresso:espresso-core", vers
 androidx-car-app = { module = "androidx.car.app:app", version.ref = "carApp" }
 androidx-car-app-projected = { module = "androidx.car.app:app-projected", version.ref = "carApp" }
 androidx-car-app-testing = { module = "androidx.car.app:app-testing", version.ref = "carApp" }
+firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
+firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
+firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -81,3 +87,5 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebaseCrashlyticsGradle" }

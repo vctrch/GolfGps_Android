@@ -1,3 +1,10 @@
 # Copy to local.properties (not committed):
 # sdk.dir=/path/to/Android/sdk
 # MAPS_API_KEY=your_google_maps_key
+# PRIVACY_POLICY_URL=https://example.com/community-golf/privacy
+#
+# Optional release signing (paths relative to the repo root):
+# RELEASE_STORE_FILE=keystore/community-golf-upload.jks
+# RELEASE_STORE_PASSWORD=...
+# RELEASE_KEY_ALIAS=upload
+# RELEASE_KEY_PASSWORD=...

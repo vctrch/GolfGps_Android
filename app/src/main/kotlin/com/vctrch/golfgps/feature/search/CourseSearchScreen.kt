@@ -28,6 +28,8 @@ fun CourseSearchScreen(
     onSearchQueryChange: (String) -> Unit,
     onClearSearch: () -> Unit,
     onCourseSelected: (GolfCourseSummary) -> Unit,
+    usageDiagnosticsEnabled: Boolean = true,
+    onUsageDiagnosticsChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -110,6 +112,10 @@ fun CourseSearchScreen(
                     SearchEmptyState()
                     DataSourcesInfoCard()
                     HelpMapCourseCard(recentCourse = state.lastSelectedCourse)
+                    PrivacyDataPracticesCard(
+                        usageDiagnosticsEnabled = usageDiagnosticsEnabled,
+                        onUsageDiagnosticsChange = onUsageDiagnosticsChange,
+                    )
                     SupportDeveloperCard()
                 }
             }

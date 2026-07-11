@@ -7,7 +7,8 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
-    id("com.google.gms.google-services")
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
 }
 
 kotlin {
@@ -20,19 +21,19 @@ android {
     namespace = "com.vctrch.golfgps"
     compileSdk = 36
 
-    val mapsApiKey: String =
-        run {
-            val localPropertiesFile = rootProject.file("local.properties")
-            if (localPropertiesFile.exists()) {
-                localPropertiesFile.readLines()
-                    .firstOrNull { it.startsWith("MAPS_API_KEY=") }
-                    ?.substringAfter("=")
-                    ?.trim()
-                    .orEmpty()
-            } else {
-                ""
-            }
-        }
+    fun localProp(key: String): String {
+        val file = rootProject.file("local.properties")
+        if (!file.exists()) return ""
+        val prefix = "$key="
+        return file.readLines()
+            .firstOrNull { it.startsWith(prefix) }
+            ?.substringAfter(prefix)
+            ?.trim()
+            .orEmpty()
+    }
+
+    val mapsApiKey = localProp("MAPS_API_KEY")
+    val privacyPolicyUrl = localProp("PRIVACY_POLICY_URL")
 
     defaultConfig {
         applicationId = "com.vctrch.golfgps"
@@ -45,7 +46,20 @@ android {
 
         buildConfigField("String", "OPENGOLF_BASE_URL", "\"https://api.opengolfapi.org/\"")
         buildConfigField("String", "MAPS_API_KEY", "\"${mapsApiKey.ifEmpty { "YOUR_MAPS_API_KEY" }}\"")
+        buildConfigField("String", "PRIVACY_POLICY_URL", "\"${privacyPolicyUrl.replace("\"", "\\\"")}\"")
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey.ifEmpty { "YOUR_MAPS_API_KEY" }
+    }
+
+    signingConfigs {
+        create("release") {
+            val storeFilePath = localProp("RELEASE_STORE_FILE")
+            if (storeFilePath.isNotEmpty()) {
+                storeFile = rootProject.file(storeFilePath)
+                storePassword = localProp("RELEASE_STORE_PASSWORD")
+                keyAlias = localProp("RELEASE_KEY_ALIAS")
+                keyPassword = localProp("RELEASE_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -55,11 +69,16 @@ android {
         }
         release {
             buildConfigField("boolean", "USE_OSM_MAP", "false")
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            val releaseSigning = signingConfigs.getByName("release")
+            if (releaseSigning.storeFile != null && releaseSigning.storeFile!!.exists()) {
+                signingConfig = releaseSigning
+            }
         }
     }
 
@@ -150,6 +169,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
-    implementation(platform("com.google.firebase:firebase-bom:34.15.0"))
-    implementation("com.google.firebase:firebase-analytics")
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.crashlytics)
 }

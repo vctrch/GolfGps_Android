@@ -19,7 +19,7 @@ class GolfCarAppService : CarAppService() {
             HostValidator.ALLOW_ALL_HOSTS_VALIDATOR
         } else {
             HostValidator.Builder(applicationContext)
-                .addAllowedHosts(R.array.hosts_allowlist_sample)
+                .addAllowedHosts(R.array.android_auto_hosts_allowlist)
                 .build()
         }
     }

@@ -1,8 +1,8 @@
-# GolfGps for Android
+# CommunityGolf for Android
 
-A rangefinder in your pocket. GolfGps shows you how far you are from the green on any hole, using free and open golf data.
+A rangefinder in your pocket. CommunityGolf shows you how far you are from the green on any hole, using free and open golf data.
 
-**Package:** `com.vctrch.golfgps` · **Version:** 1.3
+**Package:** `com.vctrch.golfgps`
 
 ## What it does
 
@@ -87,6 +87,23 @@ app/src/main/kotlin/com/vctrch/golfgps/
 The map style preference on the round map is stored in **DataStore** and surfaced through a picker in the top-right corner of the hole map. Debug builds use OSM tiles so the map works on emulators without a Google Maps API key; release builds use Google Maps when Play Services and a valid key are available.
 
 **Android Auto** uses the Car App Library POI category (`PlaceListMapTemplate`) — host-rendered map with green/tee markers and live yardage, similar in spirit to iOS CarPlay’s driving-task POI template. Start a round on the phone; the dash shows the current hole, Previous/Next, and optional tee pin. Test with the Desktop Head Unit (DHU).
+
+## Release / production
+
+Copy [`local.properties.example`](local.properties.example) → `local.properties` and set:
+
+| Key | Purpose |
+|-----|---------|
+| `MAPS_API_KEY` | Google Maps (release). Without it, release falls back to OSM. |
+| `PRIVACY_POLICY_URL` | Public HTTPS policy URL for Play Console + in-app “Open privacy policy”. |
+| `RELEASE_STORE_*` | Optional upload keystore for signed release AABs. |
+
+Also:
+
+- Host [`docs/privacy-policy.md`](docs/privacy-policy.md) (or your own policy) and paste that URL into Play Console Data safety + `PRIVACY_POLICY_URL`.
+- Create Play Billing products `tip_small`, `tip_medium`, `tip_large` (consumable).
+- CI runs ktlint, detekt, and unit tests on `develop` / `main` PRs (`.github/workflows/ci.yml`).
+- Release builds use R8 minify + Firebase Crashlytics; users can disable usage/crash collection in the search-screen privacy card.
 
 ## Agent contributors
 
