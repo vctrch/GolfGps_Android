@@ -82,10 +82,6 @@ app/src/main/kotlin/com/vctrch/golfgps/
 - Android Auto POI templates (idle + active round yardage / hole nav on the dash)
 - Unit tests for GeoMath, parser, tee yardages, tee matcher, cache validation, location filter, Auto session, and ViewModel
 
-**Still to come:**
-
-- CommunityGolf user-facing rebrand (in progress separately)
-
 ## Map style and Android Auto
 
 The map style preference on the round map is stored in **DataStore** and surfaced through a picker in the top-right corner of the hole map. Debug builds use OSM tiles so the map works on emulators without a Google Maps API key; release builds use Google Maps when Play Services and a valid key are available.

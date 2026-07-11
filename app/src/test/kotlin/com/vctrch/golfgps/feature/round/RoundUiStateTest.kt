@@ -66,8 +66,15 @@ class RoundUiStateTest {
 
     @Test
     fun distanceToGreen_computesFromUserLocation() {
-        val loaded = TestFixtures.loadedCourse()
-        val userLocation = LatLng(32.8328, -117.2713)
+        val mappedHole =
+            TestFixtures.holeTarget(
+                number = 1,
+                source = HoleTargetSource.OPEN_STREET_MAP,
+                tee = TestFixtures.sampleTee,
+                green = TestFixtures.offset(northYards = 150.0),
+            )
+        val loaded = TestFixtures.loadedCourse().copy(holes = listOf(mappedHole))
+        val userLocation = TestFixtures.offset(northYards = 50.0)
         val state =
             RoundUiState(
                 loadedCourse = loaded,
@@ -78,5 +85,18 @@ class RoundUiStateTest {
         val distance = state.distanceToGreen()
 
         assertTrue(distance != null && distance >= 0)
+    }
+
+    @Test
+    fun distanceToGreen_nullWhenGreenUnreliable() {
+        val loaded = TestFixtures.loadedCourse()
+        val state =
+            RoundUiState(
+                loadedCourse = loaded,
+                selectedHoleNumber = 1,
+                userLocation = TestFixtures.sampleTee,
+            )
+
+        assertNull(state.distanceToGreen())
     }
 }

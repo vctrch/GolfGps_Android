@@ -1,16 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Golf GPS</string>
-    <string name="android_auto_idle_title">Golf GPS</string>
-    <string name="android_auto_open_on_phone">Open Golf GPS on your phone</string>
+    <string name="app_name">Community Golf</string>
+    <string name="android_auto_idle_title">Community Golf</string>
+    <string name="android_auto_open_on_phone">Open Community Golf on your phone</string>
     <string name="android_auto_open_on_phone_detail">Search for a course and start a round.</string>
     <string name="android_auto_showing_on_auto">Showing on Android Auto</string>
-    <string name="android_auto_available_hint">Android Auto available — open Golf GPS in your cart for dash yardage</string>
+    <string name="android_auto_available_hint">Android Auto available — open Community Golf in your cart for dash yardage</string>
     <string name="android_auto_previous">Previous</string>
     <string name="android_auto_next">Next</string>
     <string name="android_auto_show_tee">Show Tee</string>
     <string name="android_auto_hide_tee">Hide Tee</string>
     <string name="android_auto_refresh">Refresh</string>
+    <string name="support_card_title">Support Community Golf</string>
+    <string name="support_card_subtitle">Community Golf is free and built on open data. If it helps your game, an optional tip keeps it growing.</string>
     <string-array name="hosts_allowlist_sample">
         <item>com.google.android.projection.gearhead</item>
         <item>com.google.android.apps.automotive.templates.host</item>

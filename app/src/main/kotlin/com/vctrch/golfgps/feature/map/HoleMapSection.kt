@@ -83,7 +83,7 @@ fun HoleMapSection(
         }
         if (mapBackend == MapBackend.OPEN_STREET_MAP) {
             Text(
-                text = "© OpenStreetMap",
+                text = mapDisplayStyle.osmAttribution(),
                 modifier =
                     Modifier
                         .align(Alignment.BottomStart)

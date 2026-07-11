@@ -37,8 +37,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.vctrch.golfgps.R
 import com.vctrch.golfgps.domain.GeoMath
 import com.vctrch.golfgps.domain.HoleTarget
 import com.vctrch.golfgps.domain.LoadedCourse
@@ -98,9 +100,7 @@ fun ActiveRoundScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             HoleHeader(course = course, hole = hole, holeIndex = state.currentHoleIndex)
-            if (isAndroidAutoConnected) {
-                AndroidAutoConnectedBanner()
-            }
+            AndroidAutoStatusBanner(connected = isAndroidAutoConnected)
             YardageHero(
                 state = state,
                 hole = hole,
@@ -171,21 +171,36 @@ private fun HoleHeader(
 }
 
 @Composable
-private fun AndroidAutoConnectedBanner() {
+private fun AndroidAutoStatusBanner(connected: Boolean) {
+    val background =
+        if (connected) {
+            GolfTheme.Fairway.copy(alpha = 0.12f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
+        }
+    val textColor =
+        if (connected) GolfTheme.Fairway else MaterialTheme.colorScheme.onSurfaceVariant
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(GolfTheme.Fairway.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+                .background(background, RoundedCornerShape(12.dp))
                 .padding(horizontal = 14.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            "Showing on Android Auto",
+            text =
+                stringResource(
+                    if (connected) {
+                        R.string.android_auto_showing_on_auto
+                    } else {
+                        R.string.android_auto_available_hint
+                    },
+                ),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
-            color = GolfTheme.Fairway,
+            color = textColor,
         )
     }
 }

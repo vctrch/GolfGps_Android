@@ -22,10 +22,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.vctrch.golfgps.R
 import com.vctrch.golfgps.data.billing.TipResult
 import com.vctrch.golfgps.ui.theme.GolfTheme
 
@@ -58,14 +60,13 @@ fun SupportDeveloperCard(
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                "Support Golf GPS",
+                stringResource(R.string.support_card_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = GolfTheme.Fairway,
             )
             Text(
-                "Golf GPS is free and built on open data. If it helps your game, " +
-                    "an optional tip keeps it growing.",
+                stringResource(R.string.support_card_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
             )
 

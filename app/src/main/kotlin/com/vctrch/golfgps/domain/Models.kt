@@ -64,9 +64,15 @@ data class HoleTarget(
         return GeoMath.yards(location, green) <= limit && GeoMath.yards(location, teeCoordinate) <= limit
     }
 
-    /** Player-to-green yardage, but only when the fix is on this hole (else null). */
-    fun playerYardsToGreen(location: LatLng): Int? =
-        if (isPlayerOnHole(location)) GeoMath.yards(location, green) else null
+    /**
+     * Player-to-green yardage when the green is mapped and the fix is on this hole.
+     * Scorecard-center fallbacks must not drive live yardage (matches iOS).
+     */
+    fun playerYardsToGreen(location: LatLng): Int? {
+        if (!hasReliableGreenPosition) return null
+        if (!isPlayerOnHole(location)) return null
+        return GeoMath.yards(location, green)
+    }
 
     /** Player-to-tee yardage when the green is mapped and a tee exists. */
     fun playerYardsToTee(location: LatLng): Int? {

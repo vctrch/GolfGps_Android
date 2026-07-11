@@ -1,5 +1,6 @@
 package com.vctrch.golfgps.feature.map
 
+import android.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
@@ -11,11 +12,13 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.vctrch.golfgps.domain.*
+import org.osmdroid.tileprovider.MapTileProviderBasic
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
+import org.osmdroid.views.overlay.TilesOverlay
 
 @Composable
 fun OsmHoleMap(
@@ -27,14 +30,20 @@ fun OsmHoleMap(
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val mapViewHolder = remember { mutableStateOf<MapView?>(null) }
-    val greenPoint = remember(hole.number) { GeoPoint(hole.green.latitude, hole.green.longitude) }
-    val teePoint = remember(hole.number) { hole.tee?.let { GeoPoint(it.latitude, it.longitude) } }
-    // Only draw/frame the player when they're realistically on this hole, so a stale or faraway fix
-    // doesn't stretch the view across the whole region.
+    val lastFrameKey = remember { mutableStateOf<String?>(null) }
+    val labelsOverlayHolder = remember { mutableStateOf<TilesOverlay?>(null) }
+    val labelsStyleHolder = remember { mutableStateOf<MapDisplayStyle?>(null) }
+    val greenPoint = remember(hole.number, hole.green) { GeoPoint(hole.green.latitude, hole.green.longitude) }
+    val teePoint = remember(hole.number, hole.tee) { hole.tee?.let { GeoPoint(it.latitude, it.longitude) } }
+    // Only draw the player when they're realistically on this hole, so a stale or faraway fix
+    // doesn't stretch overlays across the whole region.
     val playerPoint =
         userLocation
             ?.takeIf { hole.isPlayerOnHole(it) }
             ?.let { GeoPoint(it.latitude, it.longitude) }
+    val frameKey =
+        "${hole.number}:${hole.green.latitude},${hole.green.longitude}:" +
+            "${hole.tee?.latitude},${hole.tee?.longitude}"
 
     DisposableEffect(lifecycle) {
         val observer =
@@ -65,7 +74,35 @@ fun OsmHoleMap(
         },
         update = { mapView ->
             mapView.setTileSource(mapDisplayStyle.toOsmTileSource())
-            mapView.overlays.clear()
+            mapView.overlays.removeAll { it !is TilesOverlay }
+
+            val labelsSource = mapDisplayStyle.osmLabelsOverlaySource()
+            if (labelsSource == null) {
+                labelsOverlayHolder.value?.let { overlay ->
+                    mapView.overlays.remove(overlay)
+                    overlay.onDetach(mapView)
+                }
+                labelsOverlayHolder.value = null
+                labelsStyleHolder.value = mapDisplayStyle
+            } else if (labelsStyleHolder.value != mapDisplayStyle || labelsOverlayHolder.value == null) {
+                labelsOverlayHolder.value?.let { overlay ->
+                    mapView.overlays.remove(overlay)
+                    overlay.onDetach(mapView)
+                }
+                val provider = MapTileProviderBasic(context, labelsSource)
+                val labelsOverlay =
+                    TilesOverlay(provider, context).apply {
+                        loadingBackgroundColor = Color.TRANSPARENT
+                        loadingLineColor = Color.TRANSPARENT
+                    }
+                labelsOverlayHolder.value = labelsOverlay
+                labelsStyleHolder.value = mapDisplayStyle
+                mapView.overlays.add(0, labelsOverlay)
+            } else {
+                val existing = labelsOverlayHolder.value!!
+                mapView.overlays.remove(existing)
+                mapView.overlays.add(0, existing)
+            }
 
             // The hole itself: tee -> green.
             if (teePoint != null) {
@@ -113,22 +150,26 @@ fun OsmHoleMap(
                 )
             }
 
-            // Always frame the hole mapping (tee -> green); include the player only when on the hole.
-            val framingPoints =
-                buildList {
-                    add(greenPoint)
-                    teePoint?.let { add(it) }
-                    playerPoint?.let { add(it) }
+            // Frame tee/green when the hole mapping changes — not on every GPS tick (preserves pinch-zoom).
+            if (lastFrameKey.value != frameKey) {
+                lastFrameKey.value = frameKey
+                val framingPoints =
+                    buildList {
+                        add(greenPoint)
+                        teePoint?.let { add(it) }
+                    }
+                if (framingPoints.size >= 2) {
+                    val box = BoundingBox.fromGeoPoints(framingPoints)
+                    mapView.post { mapView.zoomToBoundingBox(box, true, MAP_PADDING_PX) }
+                } else {
+                    mapView.controller.setCenter(greenPoint)
                 }
-            if (framingPoints.size >= 2) {
-                val box = BoundingBox.fromGeoPoints(framingPoints)
-                mapView.post { mapView.zoomToBoundingBox(box, true, MAP_PADDING_PX) }
-            } else {
-                mapView.controller.setCenter(greenPoint)
             }
             mapView.invalidate()
         },
         onRelease = { mapView ->
+            labelsOverlayHolder.value?.onDetach(mapView)
+            labelsOverlayHolder.value = null
             mapView.onPause()
             mapViewHolder.value = null
         },

@@ -2,11 +2,16 @@ package com.vctrch.golfgps.feature.map
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLngBounds
+import com.google.maps.android.compose.CameraMoveStartedReason
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapType
@@ -27,8 +32,8 @@ fun GoogleHoleMap(
 ) {
     val green = MapsLatLng(hole.green.latitude, hole.green.longitude)
     val tee = hole.tee?.let { MapsLatLng(it.latitude, it.longitude) }
-    // Only draw/frame the player when they're realistically on this hole, so a stale or faraway fix
-    // (e.g. an emulator's default location) doesn't stretch the view across the whole region.
+    // Only draw the player when they're realistically on this hole, so a stale or faraway fix
+    // (e.g. an emulator's default location) doesn't stretch overlays across the whole region.
     val player =
         userLocation
             ?.takeIf { hole.isPlayerOnHole(it) }
@@ -38,16 +43,26 @@ fun GoogleHoleMap(
         rememberCameraPositionState {
             position = CameraPosition.fromLatLngZoom(green, 16f)
         }
+    var userAdjustedCamera by remember { mutableStateOf(false) }
 
-    // Always frame the hole mapping (tee -> green); include the player only when on the hole so an
-    // off-course fix never distorts the view. Falls back to centering on the green when alone.
-    val framingPoints =
-        buildList {
-            add(green)
-            tee?.let { add(it) }
-            player?.let { add(it) }
+    LaunchedEffect(hole.number) {
+        userAdjustedCamera = false
+    }
+
+    LaunchedEffect(camera.isMoving, camera.cameraMoveStartedReason) {
+        if (camera.cameraMoveStartedReason == CameraMoveStartedReason.GESTURE) {
+            userAdjustedCamera = true
         }
-    LaunchedEffect(framingPoints) {
+    }
+
+    // Frame tee/green when the hole mapping changes — not on every GPS tick, and not after pinch-zoom.
+    LaunchedEffect(hole.number, hole.green, hole.tee, userAdjustedCamera) {
+        if (userAdjustedCamera) return@LaunchedEffect
+        val framingPoints =
+            buildList {
+                add(green)
+                tee?.let { add(it) }
+            }
         if (framingPoints.size >= 2) {
             val builder = LatLngBounds.builder()
             framingPoints.forEach { builder.include(it) }
