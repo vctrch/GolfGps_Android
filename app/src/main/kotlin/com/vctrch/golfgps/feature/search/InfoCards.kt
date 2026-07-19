@@ -1,7 +1,6 @@
 package com.vctrch.golfgps.feature.search
 
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -10,10 +9,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.VolunteerActivism
@@ -33,7 +32,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.core.net.toUri
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vctrch.golfgps.data.remote.OSMCourseLinks
 import com.vctrch.golfgps.data.remote.OpenGolfCourseLinks
@@ -111,8 +111,8 @@ fun DataSourcesInfoCard(modifier: Modifier = Modifier) {
 
 @Composable
 fun HelpMapCourseCard(
-    recentCourse: GolfCourseSummary? = null,
     modifier: Modifier = Modifier,
+    recentCourse: GolfCourseSummary? = null,
     accountViewModel: OpenGolfAccountViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -162,7 +162,7 @@ fun HelpMapCourseCard(
                 subtitle = "Open this course on OpenGolf",
                 onClick = {
                     context.startActivity(
-                        Intent(Intent.ACTION_VIEW, Uri.parse(OpenGolfCourseLinks.coursePage(recentCourse))),
+                        Intent(Intent.ACTION_VIEW, OpenGolfCourseLinks.coursePage(recentCourse).toUri()),
                     )
                 },
             )
@@ -172,7 +172,7 @@ fun HelpMapCourseCard(
                     subtitle = "Browse the linked golf course way",
                     onClick = {
                         context.startActivity(
-                            Intent(Intent.ACTION_VIEW, Uri.parse(OSMCourseLinks.courseWay(osmId))),
+                            Intent(Intent.ACTION_VIEW, OSMCourseLinks.courseWay(osmId).toUri()),
                         )
                     },
                 )
@@ -183,7 +183,7 @@ fun HelpMapCourseCard(
                 onClick = {
                     val center = LatLng(recentCourse.latitude, recentCourse.longitude)
                     context.startActivity(
-                        Intent(Intent.ACTION_VIEW, Uri.parse(OSMCourseLinks.editMap(center))),
+                        Intent(Intent.ACTION_VIEW, OSMCourseLinks.editMap(center).toUri()),
                     )
                 },
             )
@@ -192,28 +192,31 @@ fun HelpMapCourseCard(
             title = "Find a course to edit",
             subtitle = "Search the OpenGolf directory",
             onClick = {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(OpenGolfCourseLinks.SEARCH)))
+                context.startActivity(Intent(Intent.ACTION_VIEW, OpenGolfCourseLinks.SEARCH.toUri()))
             },
         )
         LinkRow(
             title = "Add a missing course",
             subtitle = "Submit it to OpenGolf for review",
             onClick = {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(OpenGolfCourseLinks.SUBMIT_COURSE)))
+                context.startActivity(Intent(Intent.ACTION_VIEW, OpenGolfCourseLinks.SUBMIT_COURSE.toUri()))
             },
         )
     }
 
     if (showSignIn) {
         OpenGolfSignInSheet(
-            authStore = accountViewModel.openGolfAuthStore(),
+            auth = auth,
+            onRequestCode = accountViewModel::requestSignInCode,
+            onVerifyCode = accountViewModel::verifyCode,
+            onSignOut = accountViewModel::signOut,
             onDismiss = { showSignIn = false },
         )
     }
 }
 
 @Composable
-private fun ExpandableInfoCard(
+internal fun ExpandableInfoCard(
     title: String,
     subtitle: String,
     icon: @Composable () -> Unit,
@@ -291,7 +294,7 @@ private fun LinkRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Default.OpenInNew, contentDescription = null, tint = GolfTheme.Fairway)
+            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = GolfTheme.Fairway)
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     title,

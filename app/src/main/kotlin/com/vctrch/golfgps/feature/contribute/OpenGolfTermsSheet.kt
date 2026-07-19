@@ -1,7 +1,6 @@
 package com.vctrch.golfgps.feature.contribute
 
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import com.vctrch.golfgps.data.opengolf.OpenGolfTermsChallenge
 import com.vctrch.golfgps.ui.theme.GolfTheme
 
@@ -50,7 +50,7 @@ fun OpenGolfTermsSheet(
             )
             TextButton(
                 onClick = {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(challenge.termsUrl)))
+                    context.startActivity(Intent(Intent.ACTION_VIEW, challenge.termsUrl.toUri()))
                 },
             ) {
                 Text("Read terms", color = GolfTheme.Fairway)

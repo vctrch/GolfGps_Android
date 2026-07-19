@@ -7,8 +7,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -118,7 +118,7 @@ private fun confidenceDetail(hole: HoleTarget): String {
 private fun greenIcon(confidence: GreenMappingConfidence): ImageVector =
     when (confidence) {
         GreenMappingConfidence.LOADING -> Icons.Default.Sync
-        GreenMappingConfidence.ESTIMATED -> Icons.Default.HelpOutline
+        GreenMappingConfidence.ESTIMATED -> Icons.AutoMirrored.Filled.HelpOutline
         GreenMappingConfidence.MAPPED -> Icons.Default.Flag
     }
 
@@ -128,10 +128,10 @@ private fun teeIcon(confidence: TeeMappingConfidence): ImageVector =
         TeeMappingConfidence.MATCHED,
         TeeMappingConfidence.FAIRWAY_DERIVED,
         TeeMappingConfidence.ESTIMATED,
-        -> Icons.Default.HelpOutline
+        -> Icons.AutoMirrored.Filled.HelpOutline
         TeeMappingConfidence.UNAVAILABLE,
         TeeMappingConfidence.NOT_MAPPED,
-        -> Icons.Default.HelpOutline
+        -> Icons.AutoMirrored.Filled.HelpOutline
     }
 
 private fun greenTint(confidence: GreenMappingConfidence): Color =

@@ -25,19 +25,4 @@ class UserPreferencesRepositoryTest {
 
             assertEquals(MapDisplayStyle.SATELLITE, repository.mapDisplayStyle.first())
         }
-
-    @Test
-    fun usageDiagnostics_defaultsToEnabled() =
-        runTest {
-            val repository = createTestPreferencesRepository()
-            assertEquals(true, repository.usageDiagnosticsEnabled.first())
-        }
-
-    @Test
-    fun setUsageDiagnosticsEnabled_persistsSelection() =
-        runTest {
-            val repository = createTestPreferencesRepository()
-            repository.setUsageDiagnosticsEnabled(false)
-            assertEquals(false, repository.usageDiagnosticsEnabled.first())
-        }
 }

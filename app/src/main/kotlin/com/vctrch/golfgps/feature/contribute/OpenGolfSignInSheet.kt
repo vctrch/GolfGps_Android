@@ -19,25 +19,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vctrch.golfgps.data.opengolf.OpenGolfAuthStore
 import com.vctrch.golfgps.ui.theme.GolfTheme
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OpenGolfSignInSheet(
-    authStore: OpenGolfAuthStore,
+    auth: OpenGolfAuthStore.State,
+    onRequestCode: (email: String, createAccount: Boolean) -> Unit,
+    onVerifyCode: (code: String) -> Unit,
+    onSignOut: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val auth by authStore.state.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
     var modeCreate by remember { mutableStateOf(true) }
     var emailField by remember { mutableStateOf(auth.email) }
     var codeField by remember { mutableStateOf("") }
@@ -68,10 +66,16 @@ fun OpenGolfSignInSheet(
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = { modeCreate = true }) {
-                    Text("Create account", color = if (modeCreate) GolfTheme.Fairway else MaterialTheme.colorScheme.onSurface)
+                    Text(
+                        "Create account",
+                        color = if (modeCreate) GolfTheme.Fairway else MaterialTheme.colorScheme.onSurface,
+                    )
                 }
                 TextButton(onClick = { modeCreate = false }) {
-                    Text("Sign in", color = if (!modeCreate) GolfTheme.Fairway else MaterialTheme.colorScheme.onSurface)
+                    Text(
+                        "Sign in",
+                        color = if (!modeCreate) GolfTheme.Fairway else MaterialTheme.colorScheme.onSurface,
+                    )
                 }
             }
 
@@ -87,7 +91,7 @@ fun OpenGolfSignInSheet(
                         )
                         TextButton(
                             onClick = {
-                                authStore.signOut()
+                                onSignOut()
                                 codeField = ""
                             },
                         ) {
@@ -103,18 +107,7 @@ fun OpenGolfSignInSheet(
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         )
                         Button(
-                            onClick = {
-                                scope.launch {
-                                    authStore.requestSignInCode(
-                                        emailField,
-                                        if (modeCreate) {
-                                            OpenGolfAuthStore.AuthIntent.CREATE_ACCOUNT
-                                        } else {
-                                            OpenGolfAuthStore.AuthIntent.SIGN_IN
-                                        },
-                                    )
-                                }
-                            },
+                            onClick = { onRequestCode(emailField, modeCreate) },
                             enabled = emailField.isNotBlank() && !auth.isBusy,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
@@ -136,7 +129,7 @@ fun OpenGolfSignInSheet(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     )
                     Button(
-                        onClick = { scope.launch { authStore.verifyCode(codeField) } },
+                        onClick = { onVerifyCode(codeField) },
                         enabled = codeField.isNotBlank() && !auth.isBusy,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
@@ -145,7 +138,7 @@ fun OpenGolfSignInSheet(
                     TextButton(
                         onClick = {
                             codeField = ""
-                            authStore.signOut()
+                            onSignOut()
                         },
                     ) {
                         Text("Use a different email")

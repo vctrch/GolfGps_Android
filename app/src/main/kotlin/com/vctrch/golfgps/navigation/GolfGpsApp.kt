@@ -21,7 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vctrch.golfgps.R
 import com.vctrch.golfgps.feature.round.*
@@ -35,7 +35,6 @@ fun GolfGpsApp() {
         RequestLocationPermissionWithRationale(onPermissionGranted = viewModel::refreshLocationUpdates)
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         val mapDisplayStyle by viewModel.mapDisplayStyle.collectAsStateWithLifecycle()
-        val usageDiagnosticsEnabled by viewModel.usageDiagnosticsEnabled.collectAsStateWithLifecycle()
         val isAndroidAutoConnected by viewModel.isAndroidAutoConnected.collectAsStateWithLifecycle()
 
         when {
@@ -72,8 +71,6 @@ fun GolfGpsApp() {
                     onSearchQueryChange = viewModel::onSearchQueryChange,
                     onClearSearch = viewModel::clearSearch,
                     onCourseSelected = viewModel::selectCourse,
-                    usageDiagnosticsEnabled = usageDiagnosticsEnabled,
-                    onUsageDiagnosticsChange = viewModel::setUsageDiagnosticsEnabled,
                 )
             }
         }

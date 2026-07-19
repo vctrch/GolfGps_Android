@@ -1,8 +1,8 @@
 # Privacy Policy — Community Golf (Android)
 
-**Last updated:** 11 July 2026
+**Last updated:** 19 July 2026
 
-This policy describes how Community Golf (“the app”) handles information. Host this document at a public HTTPS URL and set `PRIVACY_POLICY_URL` in `local.properties` for release builds and Play Console.
+This policy describes how Community Golf (“the app”) handles information. Host this document at a public HTTPS URL and paste that URL into the Google Play store listing and Data safety form.
 
 ## Who we are
 
@@ -26,17 +26,17 @@ Community Golf is a golf rangefinder app for Android. Contact the publisher list
 ### On-device storage
 
 - The app caches course and hole data on your phone (Room database) so rounds can open faster offline.
-- Preferences such as map style and the usage/diagnostics toggle are stored on your device.
+- Preferences such as map style are stored on your device.
 - Cloud backup of app data is disabled.
 
 ### Optional tips
 
 - Optional one-time tips use **Google Play Billing**. Purchase processing is handled by Google; we do not receive your full payment card details.
 
-### Analytics and crash reports (optional)
+### Analytics and crash reports
 
-- If **Usage & crash reports** is enabled (default on; you can turn it off in the app), we use Firebase Analytics and Firebase Crashlytics to understand feature usage and diagnose crashes.
-- Events may include coarse identifiers such as course id and truncated course name, hole numbers, and search result counts — not your name or email (the app has no account system).
+- We use **Firebase Analytics** and **Firebase Crashlytics** to understand feature usage and diagnose crashes.
+- Events may include coarse identifiers such as course id and truncated course name, hole numbers, and search result counts — not your name or email (OpenGolf sign-in for contributions is separate from analytics).
 
 ## Data sharing
 
@@ -46,7 +46,6 @@ Community Golf is a golf rangefinder app for Android. Contact the publisher list
 ## Your choices
 
 - Deny or revoke location permission in Android settings.
-- Turn off **Usage & crash reports** on the search screen privacy card.
 - Uninstall the app to remove on-device cache.
 
 ## Children

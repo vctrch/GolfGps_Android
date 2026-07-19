@@ -19,7 +19,7 @@ kotlin {
 
 android {
     namespace = "com.vctrch.golfgps"
-    compileSdk = 36
+    compileSdk = 37
 
     fun localProp(key: String): String {
         val file = rootProject.file("local.properties")
@@ -33,7 +33,6 @@ android {
     }
 
     val mapsApiKey = localProp("MAPS_API_KEY")
-    val privacyPolicyUrl = localProp("PRIVACY_POLICY_URL")
     val openGolfApiKey = localProp("OPENGOLF_API_KEY")
     val openGolfClientId = localProp("OPENGOLF_CLIENT_ID").ifEmpty { "com.vctrch.golfgps" }
     val openGolfRedirectUri =
@@ -42,7 +41,7 @@ android {
     defaultConfig {
         applicationId = "com.vctrch.golfgps"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.3"
 
@@ -50,7 +49,6 @@ android {
 
         buildConfigField("String", "OPENGOLF_BASE_URL", "\"https://api.opengolfapi.org/\"")
         buildConfigField("String", "MAPS_API_KEY", "\"${mapsApiKey.ifEmpty { "YOUR_MAPS_API_KEY" }}\"")
-        buildConfigField("String", "PRIVACY_POLICY_URL", "\"${privacyPolicyUrl.replace("\"", "\\\"")}\"")
         buildConfigField("String", "OPENGOLF_API_KEY", "\"${openGolfApiKey.replace("\"", "\\\"")}\"")
         buildConfigField("String", "OPENGOLF_CLIENT_ID", "\"${openGolfClientId.replace("\"", "\\\"")}\"")
         buildConfigField(
@@ -59,6 +57,11 @@ android {
             "\"${openGolfRedirectUri.replace("\"", "\\\"")}\"",
         )
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey.ifEmpty { "YOUR_MAPS_API_KEY" }
+    }
+
+    lint {
+        abortOnError = true
+        checkReleaseBuilds = true
     }
 
     signingConfigs {
@@ -148,6 +151,7 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
+    implementation(libs.hilt.lifecycle.viewmodel.compose)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

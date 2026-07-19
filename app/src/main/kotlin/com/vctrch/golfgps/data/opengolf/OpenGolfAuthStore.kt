@@ -1,10 +1,8 @@
 package com.vctrch.golfgps.data.opengolf
 
-import com.vctrch.golfgps.BuildConfig
+import com.vctrch.golfgps.di.OpenGolfAuthHttpClient
 import com.vctrch.golfgps.domain.GolfDataException
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.okhttp.OkHttp
-import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
@@ -33,6 +31,8 @@ class OpenGolfAuthStore
     constructor(
         private val secureStore: OpenGolfSecureStore,
         private val json: Json,
+        private val config: OpenGolfConfig,
+        @OpenGolfAuthHttpClient private val authClient: HttpClient,
     ) {
         enum class Phase { SIGNED_OUT, AWAITING_CODE, SIGNED_IN }
 
@@ -49,29 +49,12 @@ class OpenGolfAuthStore
             val errorMessage: String? = null,
         ) {
             val isSignedIn: Boolean get() = phase == Phase.SIGNED_IN && !accessToken.isNullOrBlank()
-            val canContribute: Boolean get() = isSignedIn && BuildConfig.OPENGOLF_API_KEY.isNotBlank()
         }
 
         private val _state = MutableStateFlow(State())
         val state: StateFlow<State> = _state.asStateFlow()
 
         private var pkce: OpenGolfPkce.Challenge? = null
-
-        private val authClient: HttpClient =
-            HttpClient(OkHttp) {
-                expectSuccess = false
-                engine {
-                    config {
-                        followRedirects(false)
-                        followSslRedirects(false)
-                    }
-                }
-                install(HttpTimeout) {
-                    connectTimeoutMillis = 15_000
-                    requestTimeoutMillis = 30_000
-                    socketTimeoutMillis = 30_000
-                }
-            }
 
         init {
             restore()
@@ -112,7 +95,7 @@ class OpenGolfAuthStore
                     body =
                         buildJsonObject {
                             put("email", normalized)
-                            put("client_id", BuildConfig.OPENGOLF_CLIENT_ID)
+                            put("client_id", config.clientId)
                         },
                 )
                 _state.update {
@@ -165,8 +148,8 @@ class OpenGolfAuthStore
                             buildJsonObject {
                                 put("email", email)
                                 put("otp", otp)
-                                put("client_id", BuildConfig.OPENGOLF_CLIENT_ID)
-                                put("redirect_uri", BuildConfig.OPENGOLF_REDIRECT_URI)
+                                put("client_id", config.clientId)
+                                put("redirect_uri", config.redirectUri)
                                 put("scope", "identity")
                                 put("code_challenge", challenge.challenge)
                                 put("code_challenge_method", "S256")
@@ -182,8 +165,8 @@ class OpenGolfAuthStore
                             buildJsonObject {
                                 put("grant_type", "authorization_code")
                                 put("code", authCode)
-                                put("redirect_uri", BuildConfig.OPENGOLF_REDIRECT_URI)
-                                put("client_id", BuildConfig.OPENGOLF_CLIENT_ID)
+                                put("redirect_uri", config.redirectUri)
+                                put("client_id", config.clientId)
                                 put("code_verifier", challenge.verifier)
                             },
                     )
@@ -207,7 +190,7 @@ class OpenGolfAuthStore
                         AuthIntent.SIGN_IN ->
                             "Signed in to OpenGolf. You can submit map updates."
                     }
-                if (BuildConfig.OPENGOLF_API_KEY.isBlank()) {
+                if (!config.hasApiKey) {
                     status += " Note: set OPENGOLF_API_KEY in local.properties to enable submissions."
                 }
                 _state.update {
@@ -250,7 +233,7 @@ class OpenGolfAuthStore
             path: String,
             body: JsonObject,
         ): JsonObject {
-            val base = BuildConfig.OPENGOLF_BASE_URL.trimEnd('/')
+            val base = config.apiBaseUrl
             val response: HttpResponse =
                 authClient.post("$base/$path") {
                     contentType(ContentType.Application.Json)
@@ -271,7 +254,7 @@ class OpenGolfAuthStore
         }
 
         private suspend fun postOAuthCode(body: JsonObject): JsonObject {
-            val base = BuildConfig.OPENGOLF_BASE_URL.trimEnd('/')
+            val base = config.apiBaseUrl
             val response: HttpResponse =
                 authClient.post("$base/oauth/code") {
                     contentType(ContentType.Application.Json)
@@ -325,7 +308,6 @@ class OpenGolfAuthStore
                 }.getOrNull()?.takeIf { it.isNotBlank() }
             }
 
-            private fun JsonObject.string(key: String): String? =
-                (this[key] as? JsonPrimitive)?.contentOrNull
+            private fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull
         }
     }

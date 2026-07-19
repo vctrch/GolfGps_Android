@@ -1,11 +1,20 @@
 package com.vctrch.golfgps.testing
 
+import com.vctrch.golfgps.data.opengolf.OpenGolfConfig
 import com.vctrch.golfgps.data.remote.OverpassElement
 import com.vctrch.golfgps.data.remote.OverpassNode
 import com.vctrch.golfgps.domain.*
 import kotlin.math.cos
 
 object TestFixtures {
+    fun openGolfConfig(apiKey: String = "test-opengolf-key") =
+        OpenGolfConfig(
+            apiKey = apiKey,
+            baseUrl = "https://api.opengolfapi.org/",
+            clientId = "com.vctrch.golfgps.test",
+            redirectUri = "https://api.opengolfapi.org/oauth/callback",
+        )
+
     /** Arbitrary anchor for unit tests — not tied to any real course or region. */
     val sampleOrigin = LatLng(45.0, -93.0)
 

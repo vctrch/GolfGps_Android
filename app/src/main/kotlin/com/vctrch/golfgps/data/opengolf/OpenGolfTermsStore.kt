@@ -17,7 +17,7 @@ private val Context.openGolfTermsDataStore by preferencesDataStore(name = "openg
 class OpenGolfTermsStore
     @Inject
     constructor(
-        @ApplicationContext private val context: Context,
+        @param:ApplicationContext private val context: Context,
     ) {
         val acceptedVersion: Flow<String?> =
             context.openGolfTermsDataStore.data.map { prefs ->

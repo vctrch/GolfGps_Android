@@ -3,16 +3,12 @@ package com.vctrch.golfgps.data.analytics
 import android.content.Context
 import android.os.Bundle
 import com.google.firebase.analytics.FirebaseAnalytics
-import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.vctrch.golfgps.domain.GolfCourseSummary
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
 interface GolfAnalytics {
-    fun setCollectionEnabled(enabled: Boolean)
-
     fun logSearch(
         query: String,
         resultCount: Int,
@@ -42,23 +38,14 @@ interface GolfAnalytics {
 class FirebaseGolfAnalytics
     @Inject
     constructor(
-        @ApplicationContext context: Context,
+        @param:ApplicationContext context: Context,
     ) : GolfAnalytics {
         private val analytics: FirebaseAnalytics = FirebaseAnalytics.getInstance(context)
-        private val crashlytics: FirebaseCrashlytics = FirebaseCrashlytics.getInstance()
-        private val collectionEnabled = AtomicBoolean(true)
-
-        override fun setCollectionEnabled(enabled: Boolean) {
-            collectionEnabled.set(enabled)
-            analytics.setAnalyticsCollectionEnabled(enabled)
-            crashlytics.isCrashlyticsCollectionEnabled = enabled
-        }
 
         override fun logSearch(
             query: String,
             resultCount: Int,
         ) {
-            if (!collectionEnabled.get()) return
             analytics.logEvent(
                 "course_search",
                 Bundle().apply {
@@ -69,7 +56,6 @@ class FirebaseGolfAnalytics
         }
 
         override fun logCourseSelected(course: GolfCourseSummary) {
-            if (!collectionEnabled.get()) return
             analytics.logEvent(
                 "course_selected",
                 Bundle().apply {
@@ -84,7 +70,6 @@ class FirebaseGolfAnalytics
             course: GolfCourseSummary,
             holeCount: Int,
         ) {
-            if (!collectionEnabled.get()) return
             analytics.logEvent(
                 "round_started",
                 Bundle().apply {
@@ -95,7 +80,6 @@ class FirebaseGolfAnalytics
         }
 
         override fun logRoundEnded(courseId: String?) {
-            if (!collectionEnabled.get()) return
             analytics.logEvent(
                 "round_ended",
                 Bundle().apply {
@@ -105,7 +89,6 @@ class FirebaseGolfAnalytics
         }
 
         override fun logHoleSelected(holeNumber: Int) {
-            if (!collectionEnabled.get()) return
             analytics.logEvent(
                 "hole_selected",
                 Bundle().apply { putInt("hole_number", holeNumber) },
@@ -117,7 +100,6 @@ class FirebaseGolfAnalytics
             mappedHoleCount: Int,
             forced: Boolean,
         ) {
-            if (!collectionEnabled.get()) return
             analytics.logEvent(
                 "osm_enrichment",
                 Bundle().apply {
@@ -129,7 +111,6 @@ class FirebaseGolfAnalytics
         }
 
         override fun logReloadHoleGps(courseId: String) {
-            if (!collectionEnabled.get()) return
             analytics.logEvent(
                 "reload_hole_gps",
                 Bundle().apply { putString("course_id", courseId) },

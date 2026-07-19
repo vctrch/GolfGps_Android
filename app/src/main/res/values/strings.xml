@@ -12,16 +12,11 @@
     <string name="android_auto_hide_tee">Hide Tee</string>
     <string name="android_auto_refresh">Refresh</string>
     <string name="support_card_title">Support Community Golf</string>
-    <string name="support_card_subtitle">Community Golf is free and built on open data. If it helps your game, an optional tip keeps it growing.</string>
+    <string name="support_card_subtitle">Community Golf is free! An optional tip helps cover ongoing development and maintenance costs.</string>
     <string name="location_rationale_title">Location for live yardage</string>
     <string name="location_rationale_body">Community Golf uses your location while you play to show distance to the green and tee. Location is used only on this device for yardage and is not required to search for courses.</string>
     <string name="location_rationale_continue">Continue</string>
     <string name="location_rationale_not_now">Not now</string>
-    <string name="privacy_card_title">Privacy &amp; data</string>
-    <string name="privacy_card_body">We use on-device location for yardage during a round. Course search uses OpenGolfAPI. Hole maps use OpenStreetMap. Optional tips use Google Play Billing. Cached course data stays on your phone.</string>
-    <string name="privacy_diagnostics_title">Usage &amp; crash reports</string>
-    <string name="privacy_diagnostics_body">Anonymous analytics and crash reports help improve the app. You can turn this off anytime.</string>
-    <string name="privacy_open_policy">Open privacy policy</string>
     <string-array name="android_auto_hosts_allowlist">
         <item>com.google.android.projection.gearhead</item>
         <item>com.google.android.apps.automotive.templates.host</item>

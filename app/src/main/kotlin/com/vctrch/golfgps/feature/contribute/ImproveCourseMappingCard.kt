@@ -1,7 +1,6 @@
 package com.vctrch.golfgps.feature.contribute
 
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,11 +16,11 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -37,7 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.core.net.toUri
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vctrch.golfgps.data.opengolf.OpenGolfCorrectionField
 import com.vctrch.golfgps.data.remote.OSMCourseLinks
@@ -50,8 +50,8 @@ import com.vctrch.golfgps.ui.theme.GolfTheme
 fun ImproveCourseMappingCard(
     course: LoadedCourse,
     hole: HoleTarget,
-    viewModel: CourseCorrectionViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
+    viewModel: CourseCorrectionViewModel = hiltViewModel(),
 ) {
     val auth by viewModel.authState.collectAsStateWithLifecycle()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -129,7 +129,10 @@ fun ImproveCourseMappingCard(
                             readOnly = true,
                             label = { Text("Field") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(fieldMenuExpanded) },
-                            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
+                            modifier =
+                                Modifier
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                    .fillMaxWidth(),
                         )
                         ExposedDropdownMenu(
                             expanded = fieldMenuExpanded,
@@ -192,7 +195,7 @@ fun ImproveCourseMappingCard(
                         onClick = {
                             val coordinate = OSMCourseLinks.preferredEditCoordinate(hole, course.summary)
                             context.startActivity(
-                                Intent(Intent.ACTION_VIEW, Uri.parse(OSMCourseLinks.editMap(coordinate))),
+                                Intent(Intent.ACTION_VIEW, OSMCourseLinks.editMap(coordinate).toUri()),
                             )
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -203,7 +206,7 @@ fun ImproveCourseMappingCard(
                         OutlinedButton(
                             onClick = {
                                 context.startActivity(
-                                    Intent(Intent.ACTION_VIEW, Uri.parse(OSMCourseLinks.courseWay(osmId))),
+                                    Intent(Intent.ACTION_VIEW, OSMCourseLinks.courseWay(osmId).toUri()),
                                 )
                             },
                             modifier = Modifier.fillMaxWidth(),
@@ -219,7 +222,10 @@ fun ImproveCourseMappingCard(
     when (val sheet = state.presentedSheet) {
         CourseCorrectionViewModel.PresentedSheet.SignIn -> {
             OpenGolfSignInSheet(
-                authStore = viewModel.openGolfAuthStore(),
+                auth = auth,
+                onRequestCode = viewModel::requestSignInCode,
+                onVerifyCode = viewModel::verifyCode,
+                onSignOut = viewModel::signOut,
                 onDismiss = viewModel::dismissSheet,
             )
         }

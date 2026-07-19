@@ -18,8 +18,7 @@ object OpenGolfPkce {
         return Challenge(verifier = verifier, challenge = base64UrlEncode(digest))
     }
 
-    private fun base64UrlEncode(data: ByteArray): String =
-        Base64.getUrlEncoder().withoutPadding().encodeToString(data)
+    private fun base64UrlEncode(data: ByteArray): String = Base64.getUrlEncoder().withoutPadding().encodeToString(data)
 }
 
 object OpenGolfIdentity {

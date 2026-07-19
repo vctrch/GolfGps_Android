@@ -16,11 +16,9 @@ class GolfDataException(
     val termsUrl: String? = null,
 ) : Exception(message) {
     companion object {
-        fun authenticationFailed(message: String) =
-            GolfDataException(GolfDataError.AUTHENTICATION_FAILED, message)
+        fun authenticationFailed(message: String) = GolfDataException(GolfDataError.AUTHENTICATION_FAILED, message)
 
-        fun contributionFailed(message: String) =
-            GolfDataException(GolfDataError.CONTRIBUTION_FAILED, message)
+        fun contributionFailed(message: String) = GolfDataException(GolfDataError.CONTRIBUTION_FAILED, message)
 
         fun termsAcceptanceRequired(
             version: String,

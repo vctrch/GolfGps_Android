@@ -2,6 +2,7 @@ package com.vctrch.golfgps.data.opengolf
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
@@ -10,18 +11,18 @@ class OpenGolfSecureStore(
 ) {
     var accessToken: String?
         get() = prefs.getString(KEY_ACCESS_TOKEN, null)
-        set(value) = prefs.edit().putString(KEY_ACCESS_TOKEN, value).apply()
+        set(value) = prefs.edit { putString(KEY_ACCESS_TOKEN, value) }
 
     var email: String?
         get() = prefs.getString(KEY_EMAIL, null)
-        set(value) = prefs.edit().putString(KEY_EMAIL, value).apply()
+        set(value) = prefs.edit { putString(KEY_EMAIL, value) }
 
     var playerId: String?
         get() = prefs.getString(KEY_PLAYER_ID, null)
-        set(value) = prefs.edit().putString(KEY_PLAYER_ID, value).apply()
+        set(value) = prefs.edit { putString(KEY_PLAYER_ID, value) }
 
     fun clear() {
-        prefs.edit().clear().apply()
+        prefs.edit { clear() }
     }
 
     companion object {

@@ -2,9 +2,10 @@ package com.vctrch.golfgps.feature.contribute
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.vctrch.golfgps.BuildConfig
 import com.vctrch.golfgps.data.opengolf.OpenGolfAuthStore
+import com.vctrch.golfgps.data.opengolf.OpenGolfConfig
 import com.vctrch.golfgps.data.opengolf.OpenGolfContributeClient
+import com.vctrch.golfgps.data.opengolf.OpenGolfMomentSubmission
 import com.vctrch.golfgps.data.opengolf.OpenGolfMomentType
 import com.vctrch.golfgps.data.opengolf.OpenGolfTermsChallenge
 import com.vctrch.golfgps.data.opengolf.OpenGolfTermsStore
@@ -27,6 +28,7 @@ class HoleContributionViewModel
         private val authStore: OpenGolfAuthStore,
         private val contributeClient: OpenGolfContributeClient,
         private val termsStore: OpenGolfTermsStore,
+        private val openGolfConfig: OpenGolfConfig,
     ) : ViewModel() {
         sealed class PresentedSheet {
             data object Contribute : PresentedSheet()
@@ -60,7 +62,29 @@ class HoleContributionViewModel
 
         val authState = authStore.state
 
-        fun openGolfAuthStore(): OpenGolfAuthStore = authStore
+        fun requestSignInCode(
+            email: String,
+            createAccount: Boolean,
+        ) {
+            viewModelScope.launch {
+                authStore.requestSignInCode(
+                    email,
+                    if (createAccount) {
+                        OpenGolfAuthStore.AuthIntent.CREATE_ACCOUNT
+                    } else {
+                        OpenGolfAuthStore.AuthIntent.SIGN_IN
+                    },
+                )
+            }
+        }
+
+        fun verifyCode(code: String) {
+            viewModelScope.launch { authStore.verifyCode(code) }
+        }
+
+        fun signOut() {
+            authStore.signOut()
+        }
 
         fun resetForHoleChange() {
             _uiState.value = UiState()
@@ -72,7 +96,7 @@ class HoleContributionViewModel
                 _uiState.update { it.copy(presentedSheet = PresentedSheet.SignIn) }
                 return
             }
-            if (BuildConfig.OPENGOLF_API_KEY.isBlank()) {
+            if (openGolfConfig.apiKey.isBlank()) {
                 _uiState.update {
                     it.copy(errorMessage = "OPENGOLF_API_KEY is not configured in local.properties.")
                 }
@@ -140,7 +164,7 @@ class HoleContributionViewModel
                     _uiState.update { it.copy(presentedSheet = PresentedSheet.SignIn) }
                     return@launch
                 }
-                val apiKey = BuildConfig.OPENGOLF_API_KEY
+                val apiKey = openGolfConfig.apiKey
                 if (apiKey.isBlank()) {
                     _uiState.update {
                         it.copy(errorMessage = "OPENGOLF_API_KEY is not configured in local.properties.")
@@ -155,19 +179,25 @@ class HoleContributionViewModel
 
                 _uiState.update { it.copy(isSubmitting = true) }
                 try {
-                    contributeClient.submitMomentRequest(
-                        type = _uiState.value.selectedType,
-                        latitude = draft.latitude,
-                        longitude = draft.longitude,
-                        accuracyMeters = if (usingUserGps) userAccuracyMeters else null,
-                        courseId = courseId,
-                        holeNumber = holeNumber,
-                        playerId = auth.playerId,
-                        note = _uiState.value.note,
+                    val type = _uiState.value.selectedType
+                    contributeClient.submitMoment(
+                        submission =
+                            OpenGolfMomentSubmission(
+                                momentType = type,
+                                latitude = draft.latitude,
+                                longitude = draft.longitude,
+                                accuracyMeters = if (usingUserGps) userAccuracyMeters else null,
+                                courseId = courseId,
+                                hole = holeNumber,
+                                playerId = auth.playerId,
+                                note = _uiState.value.note,
+                                dedupKey =
+                                    "$courseId-$holeNumber-${type.rawValue}-" +
+                                        "${System.currentTimeMillis() / 1000}",
+                            ),
                         appApiKey = apiKey,
                         accessToken = auth.accessToken,
                     )
-                    val type = _uiState.value.selectedType
                     _uiState.update {
                         it.copy(
                             isSubmitting = false,

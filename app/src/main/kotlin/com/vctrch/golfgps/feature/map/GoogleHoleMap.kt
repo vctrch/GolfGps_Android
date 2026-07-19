@@ -17,9 +17,9 @@ import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapType
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.maps.android.compose.rememberUpdatedMarkerState
 import com.vctrch.golfgps.domain.*
 import com.google.android.gms.maps.model.LatLng as MapsLatLng
 
@@ -39,6 +39,11 @@ fun GoogleHoleMap(
         userLocation
             ?.takeIf { hole.isPlayerOnHole(it) }
             ?.let { MapsLatLng(it.latitude, it.longitude) }
+
+    val greenMarker = rememberUpdatedMarkerState(green)
+    // Optional markers still need a remembered state; unused when tee/player is null.
+    val teeMarker = rememberUpdatedMarkerState(tee ?: green)
+    val playerMarker = rememberUpdatedMarkerState(player ?: green)
 
     val camera =
         rememberCameraPositionState {
@@ -85,13 +90,15 @@ fun GoogleHoleMap(
     ) {
         // The hole itself: tee -> green.
         tee?.let { Polyline(points = listOf(it, green), color = Color(0xCCFFFFFF), width = 4f) }
-        Marker(state = MarkerState(green), title = "Green")
-        tee?.let { Marker(state = MarkerState(it), title = "Tee") }
+        Marker(state = greenMarker, title = "Green")
+        if (tee != null) {
+            Marker(state = teeMarker, title = "Tee")
+        }
         // The live shot: player -> green.
         player?.let {
             Polyline(points = listOf(it, green), color = Color(0xFFFFFFFF), width = 8f)
             Polyline(points = listOf(it, green), color = Color(0xFF1B5E20), width = 4f)
-            Marker(state = MarkerState(it), title = "You")
+            Marker(state = playerMarker, title = "You")
         }
     }
 }

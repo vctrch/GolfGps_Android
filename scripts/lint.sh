@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-./gradlew ktlintCheck detekt test --quiet
+./gradlew ktlintCheck detekt testDebugUnitTest --quiet

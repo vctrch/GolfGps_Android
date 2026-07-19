@@ -95,13 +95,6 @@ class RoundViewModel
                 MapDisplayStyle.STANDARD,
             )
 
-        val usageDiagnosticsEnabled: StateFlow<Boolean> =
-            userPreferencesRepository.usageDiagnosticsEnabled.stateIn(
-                viewModelScope,
-                SharingStarted.WhileSubscribed(5_000),
-                true,
-            )
-
         val isAndroidAutoConnected: StateFlow<Boolean> =
             activeRoundSession.snapshot
                 .map { it.isAutoConnected }
@@ -139,7 +132,6 @@ class RoundViewModel
 
         override fun onCleared() {
             activeRoundSession.unbindHoleActions()
-            super.onCleared()
         }
 
         fun refreshLocationUpdates() {
@@ -370,12 +362,6 @@ class RoundViewModel
         fun setMapDisplayStyle(style: MapDisplayStyle) {
             viewModelScope.launch {
                 userPreferencesRepository.setMapDisplayStyle(style)
-            }
-        }
-
-        fun setUsageDiagnosticsEnabled(enabled: Boolean) {
-            viewModelScope.launch {
-                userPreferencesRepository.setUsageDiagnosticsEnabled(enabled)
             }
         }
 

@@ -3,7 +3,7 @@
 A rangefinder in your pocket. Community Golf shows how far you are from the green on any hole, using free and open golf data — and lets golfers improve that data in-app.
 
 **Package / applicationId:** `com.vctrch.golfgps`  
-**Min / target SDK:** 26 / 36 · **Version:** 1.3
+**Min / target SDK:** 26 / 37 · **Version:** 1.3
 
 ## What it does
 
@@ -34,7 +34,7 @@ Both are [ODbL](https://opendatacommons.org/licenses/odbl/).
 | Auth / contribute | OpenGolf OAuth (PKCE + email OTP) · moments & corrections over HTTPS |
 | Monetization | Play Billing Library (consumable in-app tips) |
 | Car | Android Auto Car App Library (`PlaceListMapTemplate` POI) |
-| Observability | Firebase Analytics · Firebase Crashlytics (opt-out in privacy card) |
+| Observability | Firebase Analytics · Firebase Crashlytics |
 | Quality / release | ktlint · detekt · R8 minify (release) · GitHub Actions CI |
 
 ### Project layout
@@ -69,7 +69,7 @@ app/src/main/kotlin/com/vctrch/golfgps/
 - Dual maps (Google release / OSM debug); map style in DataStore; OSM attribution
 - OpenGolf contribute: email OTP sign-in, terms acceptance, place-mode marks, corrections, OSM links
 - Android Auto idle + active-round templates
-- Optional tips (`tip_small` / `tip_medium` / `tip_large`); usage/crash opt-out
+- Optional tips (`tip_small` / `tip_medium` / `tip_large`)
 - Unit tests for GeoMath, OSM parser, tee matching, cache validation, location filter, Auto session, OpenGolf contribute core, ViewModels
 
 ## OpenGolf contributions
@@ -95,7 +95,7 @@ IDs must match exactly (`BillingRepository.TIP_PRODUCT_IDS`). Debug builds show 
 3. **Activate** each product and set price / free trial N/A (one-time purchase).
 4. **License testers** — Setup → License testing: add your Google accounts so internal/closed testers can buy without being charged (or use test card flows as Play documents).
 5. **App must be on Play** — Billing product queries work for packages uploaded to Play (internal testing track is enough). A sideloaded release APK with a matching `applicationId` still needs the app listing + products on that package.
-6. **Data safety / policy** — Declare that the app uses Google Play’s billing system for optional tips; keep privacy policy URL current (`PRIVACY_POLICY_URL` + Play Console Data safety).
+6. **Data safety / policy** — Declare that the app uses Google Play’s billing system for optional tips; host the privacy policy and paste its URL into Play Console Data safety.
 
 No server-side receipt validation is implemented; tips are thank-you purchases only.
 
@@ -106,14 +106,13 @@ Copy [`local.properties.example`](local.properties.example) → `local.propertie
 | Key | Purpose |
 |-----|---------|
 | `MAPS_API_KEY` | Google Maps (release). Without it, release falls back to OSM. |
-| `PRIVACY_POLICY_URL` | Public HTTPS policy for Play + in-app link. |
 | `OPENGOLF_API_KEY` | Developer key for contribute writes. |
 | `OPENGOLF_CLIENT_ID` / `OPENGOLF_REDIRECT_URI` | OAuth identity (defaults match iOS). |
 | `RELEASE_STORE_*` | Optional upload keystore for signed release AABs. |
 
 Also:
 
-- Host [`docs/privacy-policy.md`](docs/privacy-policy.md) (or your own) and paste the URL into Play Data safety + `PRIVACY_POLICY_URL`.
+- Host [`docs/privacy-policy.md`](docs/privacy-policy.md) (or your own) and paste the URL into Play Console Data safety / store listing.
 - CI: ktlint, detekt, unit tests on `develop` / `main` PRs (`.github/workflows/ci.yml`).
 
 ### Map style and Android Auto
@@ -121,10 +120,6 @@ Also:
 Map style lives in DataStore (picker on the hole map). Debug uses OSM tiles; release uses Google Maps when Play Services + a valid key are available.
 
 Android Auto: start a round on the phone; the dash shows hole yardage, Previous/Next, optional tee pin. Test with the Desktop Head Unit (DHU).
-
-## Agent contributors
-
-Cursor agents open PRs as a dedicated GitHub user (not the repo owner). Setup: [`.cursor/agent-github-setup.md`](.cursor/agent-github-setup.md).
 
 ## Related
 

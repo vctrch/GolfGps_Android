@@ -24,6 +24,7 @@ fun HoleMapSection(
     userLocation: LatLng?,
     mapDisplayStyle: MapDisplayStyle,
     onMapDisplayStyleChange: (MapDisplayStyle) -> Unit,
+    modifier: Modifier = Modifier,
     isPlaceMode: Boolean = false,
     isSignedIn: Boolean = false,
     contributionStatus: String? = null,
@@ -31,7 +32,6 @@ fun HoleMapSection(
     onBeginPlaceMode: () -> Unit = {},
     onCancelPlaceMode: () -> Unit = {},
     onMarkHere: (LatLng) -> Unit = {},
-    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val mapBackend = remember { resolveMapBackend(context) }
@@ -107,7 +107,10 @@ fun HoleMapSection(
                     style = MaterialTheme.typography.labelMedium,
                     modifier =
                         Modifier
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f), RoundedCornerShape(10.dp))
+                            .background(
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                                RoundedCornerShape(10.dp),
+                            )
                             .padding(horizontal = 10.dp, vertical = 6.dp),
                 )
             }
@@ -118,7 +121,10 @@ fun HoleMapSection(
                     style = MaterialTheme.typography.labelMedium,
                     modifier =
                         Modifier
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f), RoundedCornerShape(10.dp))
+                            .background(
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                                RoundedCornerShape(10.dp),
+                            )
                             .padding(horizontal = 10.dp, vertical = 6.dp),
                 )
             }
@@ -127,7 +133,10 @@ fun HoleMapSection(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f), RoundedCornerShape(14.dp))
+                            .background(
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                                RoundedCornerShape(14.dp),
+                            )
                             .padding(10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,

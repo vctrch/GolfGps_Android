@@ -42,7 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vctrch.golfgps.R
 import com.vctrch.golfgps.domain.GeoMath
@@ -75,9 +75,9 @@ fun ActiveRoundScreen(
     onReloadHoleGPS: () -> Unit,
     onOpenLocationSettings: () -> Unit,
     onRequestPreciseLocation: () -> Unit,
+    modifier: Modifier = Modifier,
     isAndroidAutoConnected: Boolean = false,
     contributionViewModel: HoleContributionViewModel = hiltViewModel(),
-    modifier: Modifier = Modifier,
 ) {
     val course = state.loadedCourse ?: return
     val hole = state.currentHole ?: return
@@ -189,7 +189,10 @@ fun ActiveRoundScreen(
         }
         HoleContributionViewModel.PresentedSheet.SignIn -> {
             OpenGolfSignInSheet(
-                authStore = contributionViewModel.openGolfAuthStore(),
+                auth = auth,
+                onRequestCode = contributionViewModel::requestSignInCode,
+                onVerifyCode = contributionViewModel::verifyCode,
+                onSignOut = contributionViewModel::signOut,
                 onDismiss = contributionViewModel::dismissSheet,
             )
         }

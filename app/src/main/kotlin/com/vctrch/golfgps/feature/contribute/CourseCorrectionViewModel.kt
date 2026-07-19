@@ -2,8 +2,8 @@ package com.vctrch.golfgps.feature.contribute
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.vctrch.golfgps.BuildConfig
 import com.vctrch.golfgps.data.opengolf.OpenGolfAuthStore
+import com.vctrch.golfgps.data.opengolf.OpenGolfConfig
 import com.vctrch.golfgps.data.opengolf.OpenGolfContributeClient
 import com.vctrch.golfgps.data.opengolf.OpenGolfCorrectionField
 import com.vctrch.golfgps.data.opengolf.OpenGolfCorrectionSubmission
@@ -26,6 +26,7 @@ class CourseCorrectionViewModel
         private val authStore: OpenGolfAuthStore,
         private val contributeClient: OpenGolfContributeClient,
         private val termsStore: OpenGolfTermsStore,
+        private val openGolfConfig: OpenGolfConfig,
     ) : ViewModel() {
         sealed class PresentedSheet {
             data object SignIn : PresentedSheet()
@@ -51,7 +52,25 @@ class CourseCorrectionViewModel
 
         val authState = authStore.state
 
-        fun openGolfAuthStore(): OpenGolfAuthStore = authStore
+        fun requestSignInCode(
+            email: String,
+            createAccount: Boolean,
+        ) {
+            viewModelScope.launch {
+                authStore.requestSignInCode(
+                    email,
+                    if (createAccount) {
+                        OpenGolfAuthStore.AuthIntent.CREATE_ACCOUNT
+                    } else {
+                        OpenGolfAuthStore.AuthIntent.SIGN_IN
+                    },
+                )
+            }
+        }
+
+        fun verifyCode(code: String) {
+            viewModelScope.launch { authStore.verifyCode(code) }
+        }
 
         fun summarySubtitle(isSignedIn: Boolean): String {
             return if (isSignedIn) {
@@ -108,7 +127,7 @@ class CourseCorrectionViewModel
                     _uiState.update { it.copy(presentedSheet = PresentedSheet.SignIn) }
                     return@launch
                 }
-                val apiKey = BuildConfig.OPENGOLF_API_KEY
+                val apiKey = openGolfConfig.apiKey
                 if (apiKey.isBlank()) {
                     _uiState.update {
                         it.copy(errorMessage = "OPENGOLF_API_KEY is not configured in local.properties.")
