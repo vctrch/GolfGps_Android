@@ -6,16 +6,24 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.vctrch.golfgps.R
 import com.vctrch.golfgps.feature.round.*
 import com.vctrch.golfgps.feature.search.*
 import com.vctrch.golfgps.ui.theme.GolfGpsTheme
@@ -24,7 +32,7 @@ import com.vctrch.golfgps.ui.theme.GolfGpsTheme
 fun GolfGpsApp() {
     GolfGpsTheme {
         val viewModel: RoundViewModel = hiltViewModel()
-        RequestLocationPermissionOnLaunch(onPermissionGranted = viewModel::refreshLocationUpdates)
+        RequestLocationPermissionWithRationale(onPermissionGranted = viewModel::refreshLocationUpdates)
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         val mapDisplayStyle by viewModel.mapDisplayStyle.collectAsStateWithLifecycle()
         val isAndroidAutoConnected by viewModel.isAndroidAutoConnected.collectAsStateWithLifecycle()
@@ -70,8 +78,9 @@ fun GolfGpsApp() {
 }
 
 @Composable
-private fun RequestLocationPermissionOnLaunch(onPermissionGranted: () -> Unit) {
+private fun RequestLocationPermissionWithRationale(onPermissionGranted: () -> Unit) {
     val context = LocalContext.current
+    var showRationale by remember { mutableStateOf(false) }
     val launcher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestMultiplePermissions(),
@@ -80,22 +89,49 @@ private fun RequestLocationPermissionOnLaunch(onPermissionGranted: () -> Unit) {
             },
         )
 
-    LaunchedEffect(Unit) {
+    fun hasLocationPermission(): Boolean {
         val fineGranted =
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
                 PackageManager.PERMISSION_GRANTED
         val coarseGranted =
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
                 PackageManager.PERMISSION_GRANTED
-        if (fineGranted || coarseGranted) {
+        return fineGranted || coarseGranted
+    }
+
+    LaunchedEffect(Unit) {
+        if (hasLocationPermission()) {
             onPermissionGranted()
         } else {
-            launcher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                ),
-            )
+            showRationale = true
         }
+    }
+
+    if (showRationale) {
+        AlertDialog(
+            onDismissRequest = { showRationale = false },
+            title = { Text(stringResource(R.string.location_rationale_title)) },
+            text = { Text(stringResource(R.string.location_rationale_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showRationale = false
+                        launcher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION,
+                            ),
+                        )
+                    },
+                ) {
+                    Text(stringResource(R.string.location_rationale_continue))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRationale = false }) {
+                    Text(stringResource(R.string.location_rationale_not_now))
+                }
+            },
+        )
     }
 }

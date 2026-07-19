@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddLocationAlt
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vctrch.golfgps.domain.*
+import com.vctrch.golfgps.ui.theme.GolfTheme
 
 @Composable
 fun HoleMapSection(
@@ -23,16 +25,24 @@ fun HoleMapSection(
     mapDisplayStyle: MapDisplayStyle,
     onMapDisplayStyleChange: (MapDisplayStyle) -> Unit,
     modifier: Modifier = Modifier,
+    isPlaceMode: Boolean = false,
+    isSignedIn: Boolean = false,
+    contributionStatus: String? = null,
+    contributionError: String? = null,
+    onBeginPlaceMode: () -> Unit = {},
+    onCancelPlaceMode: () -> Unit = {},
+    onMarkHere: (LatLng) -> Unit = {},
 ) {
     val context = LocalContext.current
     val mapBackend = remember { resolveMapBackend(context) }
     val waitingForMap = !hole.hasReliableGreenPosition
+    var mapCenter by remember(hole.number) { mutableStateOf(hole.green) }
 
     Box(
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(340.dp)
+                .height(380.dp)
                 .clip(RoundedCornerShape(20.dp)),
     ) {
         Box(modifier = Modifier.fillMaxSize().alpha(if (waitingForMap) 0.45f else 1f)) {
@@ -42,6 +52,7 @@ fun HoleMapSection(
                         hole = hole,
                         userLocation = userLocation,
                         mapDisplayStyle = mapDisplayStyle,
+                        onCameraCenterChanged = { mapCenter = it },
                         modifier = Modifier.fillMaxSize(),
                     )
                 MapBackend.OPEN_STREET_MAP ->
@@ -49,9 +60,20 @@ fun HoleMapSection(
                         hole = hole,
                         userLocation = userLocation,
                         mapDisplayStyle = mapDisplayStyle,
+                        onCameraCenterChanged = { mapCenter = it },
                         modifier = Modifier.fillMaxSize(),
                     )
             }
+        }
+
+        if (isPlaceMode) {
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.Center)
+                        .size(22.dp)
+                        .background(GolfTheme.Fairway.copy(alpha = 0.9f), RoundedCornerShape(999.dp)),
+            )
         }
 
         Text(
@@ -69,6 +91,75 @@ fun HoleMapSection(
             onMapDisplayStyleChange = onMapDisplayStyleChange,
             modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
         )
+
+        Column(
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            contributionError?.let {
+                Text(
+                    it,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier =
+                        Modifier
+                            .background(
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                                RoundedCornerShape(10.dp),
+                            )
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                )
+            }
+            contributionStatus?.let {
+                Text(
+                    it,
+                    color = GolfTheme.Fairway,
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier =
+                        Modifier
+                            .background(
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                                RoundedCornerShape(10.dp),
+                            )
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                )
+            }
+            if (isPlaceMode) {
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .background(
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                                RoundedCornerShape(14.dp),
+                            )
+                            .padding(10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(onClick = onCancelPlaceMode) { Text("Cancel") }
+                    Button(onClick = { onMarkHere(mapCenter) }) {
+                        Text("Mark here")
+                    }
+                }
+            } else {
+                AssistChip(
+                    onClick = onBeginPlaceMode,
+                    label = {
+                        Text(
+                            if (isSignedIn) "Add tee, green, or pin" else "Create account to mark the map",
+                        )
+                    },
+                    leadingIcon = { Icon(Icons.Default.AddLocationAlt, contentDescription = null) },
+                    modifier = Modifier.align(Alignment.Start),
+                )
+            }
+        }
+
         if (waitingForMap) {
             Text(
                 text = "Hole map loading",
@@ -83,11 +174,11 @@ fun HoleMapSection(
         }
         if (mapBackend == MapBackend.OPEN_STREET_MAP) {
             Text(
-                text = "© OpenStreetMap",
+                text = mapDisplayStyle.osmAttribution(),
                 modifier =
                     Modifier
                         .align(Alignment.BottomStart)
-                        .padding(8.dp)
+                        .padding(start = 8.dp, bottom = 72.dp)
                         .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f), RoundedCornerShape(6.dp))
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                 style = MaterialTheme.typography.labelSmall,

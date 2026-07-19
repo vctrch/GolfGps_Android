@@ -38,7 +38,7 @@ interface GolfAnalytics {
 class FirebaseGolfAnalytics
     @Inject
     constructor(
-        @ApplicationContext context: Context,
+        @param:ApplicationContext context: Context,
     ) : GolfAnalytics {
         private val analytics: FirebaseAnalytics = FirebaseAnalytics.getInstance(context)
 
@@ -60,7 +60,7 @@ class FirebaseGolfAnalytics
                 "course_selected",
                 Bundle().apply {
                     putString("course_id", course.id)
-                    putString("course_name", course.name.take(100))
+                    putString("course_name", course.name.take(COURSE_NAME_ANALYTICS_MAX))
                     course.state?.let { putString("state", it) }
                 },
             )
@@ -115,5 +115,9 @@ class FirebaseGolfAnalytics
                 "reload_hole_gps",
                 Bundle().apply { putString("course_id", courseId) },
             )
+        }
+
+        private companion object {
+            const val COURSE_NAME_ANALYTICS_MAX = 100
         }
     }

@@ -9,7 +9,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.GolfCourse
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -151,20 +150,12 @@ private fun SearchResultsSection(
 
 @Composable
 private fun SearchEmptyState(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.fillMaxWidth().padding(vertical = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Icon(
-            Icons.Default.GolfCourse,
-            contentDescription = null,
-            tint = GolfTheme.Fairway,
-            modifier = Modifier.height(48.dp),
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("Type at least 2 characters to search")
-    }
+    Text(
+        "Type at least 2 characters to search",
+        modifier = modifier.fillMaxWidth().padding(vertical = 4.dp),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable

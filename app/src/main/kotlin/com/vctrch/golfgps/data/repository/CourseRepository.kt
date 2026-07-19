@@ -10,6 +10,7 @@ import com.vctrch.golfgps.domain.*
 import kotlinx.coroutines.delay
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.cancellation.CancellationException
 
 @Singleton
 class CourseRepository
@@ -120,6 +121,8 @@ class CourseRepository
                         cache.saveOsmHoles(summary.id, summary, mapped)
                     }
                     return result
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     lastError = e
                     if (attempt < OSM_NETWORK_ATTEMPTS - 1) {

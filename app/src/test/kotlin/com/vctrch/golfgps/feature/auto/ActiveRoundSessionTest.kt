@@ -53,6 +53,24 @@ class ActiveRoundSessionTest {
     }
 
     @Test
+    fun publish_omitsGreenYardageWhenUnreliable() {
+        val session = ActiveRoundSession()
+        val fallback =
+            TestFixtures.holeTarget(
+                number = 1,
+                source = HoleTargetSource.SCORECARD_FALLBACK,
+                tee = TestFixtures.sampleTee,
+                green = TestFixtures.offset(northYards = 150.0),
+            )
+        val course = TestFixtures.loadedCourse().copy(holes = listOf(fallback))
+        val onHole = TestFixtures.offset(northYards = 50.0)
+
+        session.publish(course, selectedHoleNumber = 1, userLocation = onHole)
+
+        assertEquals(null, session.snapshot.value.yardsToGreen)
+    }
+
+    @Test
     fun holeActions_invokeBoundCallbacks() {
         val session = ActiveRoundSession()
         var previous = 0

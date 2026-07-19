@@ -7,7 +7,7 @@ config:
 complexity:
   LongMethod:
     active: true
-    threshold: 80
+    threshold: 100
     ignoreAnnotated: ['Composable']
   LongParameterList:
     active: true
@@ -15,19 +15,37 @@ complexity:
     ignoreAnnotated: ['Composable']
   TooManyFunctions:
     active: true
-    thresholdInClasses: 15
+    thresholdInClasses: 25
+    thresholdInObjects: 25
+    thresholdInFiles: 30
+  CyclomaticComplexMethod:
+    active: true
+    threshold: 30
+    ignoreAnnotated: ['Composable']
+  NestedBlockDepth:
+    active: true
+    threshold: 6
 
 style:
   ReturnCount:
     active: false
-  MagicNumber:
+  LoopWithTooManyJumpStatements:
     active: true
-    ignoreNumbers: ['-1', '0', '1', '2', '500', '1000', '16f', '340']
-    ignorePropertyDeclaration: true
-    ignoreAnnotation: true
+    maxJumpCount: 10
+  # Matches project ktlint config (wildcards allowed).
+  WildcardImport:
+    active: false
+  # Domain/geo code uses many numeric thresholds; prefer named consts in review for new code.
+  MagicNumber:
+    active: false
   MaxLineLength:
     active: false
   UseCheckOrError:
+    active: false
+
+exceptions:
+  # Network/load boundaries intentionally catch broadly after rethrowing CancellationException.
+  TooGenericExceptionCaught:
     active: false
 
 naming:

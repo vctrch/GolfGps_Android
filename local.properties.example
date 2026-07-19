@@ -1,3 +1,14 @@
 # Copy to local.properties (not committed):
 # sdk.dir=/path/to/Android/sdk
 # MAPS_API_KEY=your_google_maps_key
+#
+# OpenGolf contributions (Sign in with OpenGolf + map updates):
+# OPENGOLF_API_KEY=ogapi_your_developer_key
+# OPENGOLF_CLIENT_ID=com.vctrch.golfgps
+# OPENGOLF_REDIRECT_URI=https://api.opengolfapi.org/oauth/callback
+#
+# Optional release signing (paths relative to the repo root):
+# RELEASE_STORE_FILE=keystore/community-golf-upload.jks
+# RELEASE_STORE_PASSWORD=...
+# RELEASE_KEY_ALIAS=upload
+# RELEASE_KEY_PASSWORD=...
