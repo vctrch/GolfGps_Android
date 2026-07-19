@@ -1,18 +1,26 @@
 ---
-description: Prefer current branch; always confirm branch before starting work
+description: Prefer current local branch; confirm always; PRs last — CommunityGolf Android
 alwaysApply: true
 ---
 
-# Git branch flow
+# Git branch flow (CommunityGolf Android)
 
-## Branch choice
+This project follows the **user-level** `git-workflow` rule. Project specifics below.
 
-- **Prefer the current checked-out branch** for new work (do not invent a new feature/fix branch by default).
-- **Always confirm the branch with the user before starting substantive work** — state the current branch name and ask if they want to stay on it (or switch).
-- If the branch name does not match the work (e.g. broad refactor on a narrow `fix/…` branch), still prefer same branch unless the user asks for a new one — call out the mismatch when confirming.
+## Branch choice (confirm every time)
 
-## Commits / push / PRs
+- Prefer the **current local checkout** (`main`, `develop`, or a topic branch — whatever the user is on).
+- Before substantive work, say: **current branch is X; stay on it?** Wait for confirmation.
+- Do **not** create `feature/…` or `fix/…` branches unless the user asks.
+- Usual human merge path when *they* choose it: topic → `develop` → `main`. Agents do not drive that merge unless asked.
 
-- Do not commit, push, or open a PR unless the user explicitly asks.
-- Before committing: show status/diff summary, propose a message, ask for approval.
-- Follow existing topic-branch → `develop` → `main` merge flow; do not push or merge to shared branches unless asked.
+## Local vs remote
+
+- Work and commits stay **local** unless the user asks to push.
+- If `git status` shows ahead/behind or diverged from `origin`, report it and ask — do not auto-pull, rebase, or push to “catch up.”
+- Do not create remote-tracking branches as a side effect of convenience.
+
+## PRs
+
+- Last alternative. Prefer local commits on the current branch.
+- If a PR is needed (user asks, or they agree after you explain why local-only won’t work), follow `agent-pull-requests` for contributor identity — still get explicit approval before push/`gh pr create`.
