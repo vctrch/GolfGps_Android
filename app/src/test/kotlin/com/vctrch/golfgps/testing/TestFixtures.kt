@@ -1,11 +1,20 @@
 package com.vctrch.golfgps.testing
 
+import com.vctrch.golfgps.data.opengolf.OpenGolfConfig
 import com.vctrch.golfgps.data.remote.OverpassElement
 import com.vctrch.golfgps.data.remote.OverpassNode
 import com.vctrch.golfgps.domain.*
 import kotlin.math.cos
 
 object TestFixtures {
+    fun openGolfConfig(apiKey: String = "test-opengolf-key") =
+        OpenGolfConfig(
+            apiKey = apiKey,
+            baseUrl = "https://api.opengolfapi.org/",
+            clientId = "com.vctrch.golfgps.test",
+            redirectUri = "https://api.opengolfapi.org/oauth/callback",
+        )
+
     /** Arbitrary anchor for unit tests — not tied to any real course or region. */
     val sampleOrigin = LatLng(45.0, -93.0)
 
@@ -49,16 +58,19 @@ object TestFixtures {
     ): OverpassElement = OverpassElement(tags = mapOf("golf" to "pin", "ref" to "$ref"), lat = lat, lon = lon)
 
     fun overpassTeeElement(
-        ref: Int,
+        ref: Int?,
         lat: Double,
         lon: Double,
-    ): OverpassElement =
-        OverpassElement(
-            id = ref.toLong() + 10_000,
-            tags = mapOf("golf" to "tee", "ref" to "$ref"),
+    ): OverpassElement {
+        val tags = mutableMapOf("golf" to "tee")
+        if (ref != null) tags["ref"] = "$ref"
+        return OverpassElement(
+            id = (ref?.toLong() ?: 0L) + 10_000,
+            tags = tags,
             lat = lat,
             lon = lon,
         )
+    }
 
     fun overpassGreenElement(
         ref: Int,
@@ -112,12 +124,14 @@ object TestFixtures {
         number: Int = 1,
         source: HoleTargetSource = HoleTargetSource.SCORECARD_FALLBACK,
         tee: LatLng? = null,
+        teeSource: TeeMappingSource? = null,
         green: LatLng = LatLng(32.8330, -117.2710),
     ): HoleTarget =
         HoleTarget(
             number = number,
             par = 4,
             tee = tee,
+            teeSource = teeSource,
             green = green,
             source = source,
         )

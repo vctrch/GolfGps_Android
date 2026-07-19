@@ -1,0 +1,18 @@
+---
+description: Prefer current branch; always confirm branch before starting work
+alwaysApply: true
+---
+
+# Git branch flow
+
+## Branch choice
+
+- **Prefer the current checked-out branch** for new work (do not invent a new feature/fix branch by default).
+- **Always confirm the branch with the user before starting substantive work** — state the current branch name and ask if they want to stay on it (or switch).
+- If the branch name does not match the work (e.g. broad refactor on a narrow `fix/…` branch), still prefer same branch unless the user asks for a new one — call out the mismatch when confirming.
+
+## Commits / push / PRs
+
+- Do not commit, push, or open a PR unless the user explicitly asks.
+- Before committing: show status/diff summary, propose a message, ask for approval.
+- Follow existing topic-branch → `develop` → `main` merge flow; do not push or merge to shared branches unless asked.

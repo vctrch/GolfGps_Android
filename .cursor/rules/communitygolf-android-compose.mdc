@@ -1,0 +1,70 @@
+---
+description: CommunityGolf Android architecture, packages, and Jetpack Compose conventions
+globs: "**/*.kt,**/*.kts,**/*.xml"
+alwaysApply: false
+---
+
+# CommunityGolf Android
+
+User-facing product name is **CommunityGolf**. Kotlin + Jetpack Compose; source package is still `com.vctrch.golfgps`. Prefer matching existing patterns over inventing new layers.
+
+## Versions
+
+- **Source of truth:** `gradle/libs.versions.toml` and `app/build.gradle.kts` (SDK levels, `versionName` / `versionCode`, JVM target, plugins).
+- Do **not** pin library, AGP, Kotlin, Compose BOM, or app versions in these rules — bump the catalog/build files only; rules stay valid across routine upgrades.
+- Prefer **Kotlin 2.x** and current stable AndroidX / Compose APIs already used in the project; do not gate work on a specific patch.
+- Do **not** use Gradle dynamic versions (`1.+`, `latest.release`) in the catalog — keep exact pins there, just update them when bumping.
+
+## Architecture
+
+- Keep **domain**, **data**, and **feature UI** separated; do not put networking or Room in Compose screens.
+- Unidirectional data flow: `ViewModel` → `StateFlow` UI state → Compose; hoist state and pass events up.
+- Use **Hilt** for DI (`@HiltViewModel`, `@Inject`, modules in `di/`).
+- Async work: Kotlin coroutines + `Flow` / `StateFlow`. Prefer `viewModelScope` in ViewModels.
+- Networking is **Ktor client** (not Retrofit). JSON via kotlinx.serialization.
+- Local persistence: **Room** for course/OSM cache; **DataStore** for preferences (e.g. map style).
+- Maps: Google Maps Compose in release; osmdroid in debug (`USE_OSM_MAP`). Location via Fused Location.
+
+## Package layout
+
+```
+app/src/main/kotlin/com/vctrch/golfgps/
+  MainActivity.kt / GolfGpsApplication.kt / navigation/
+  domain/          Models, GeoMath, mapping confidence, helpers
+  data/
+    local/         Room + DataStore
+    remote/        OpenGolf (Ktor), Overpass/OSM parser + tee matcher
+    repository/    CourseRepository
+    analytics/     Firebase helpers
+    billing/       Play Billing tips
+  location/        LocationRepository + permission / precise-location status
+  feature/
+    search/        Course search + info cards
+    round/         Active round, mapping UI, unavailable/retry, ViewModel
+    map/           Google / OSM hole maps
+    auto/          Android Auto (POI templates + ActiveRoundSession)
+    support/       Developer tip card
+  ui/theme/        Material 3 theme
+  di/              Hilt modules
+```
+
+Tests mirror packages under `app/src/test/kotlin/com/vctrch/golfgps/` (plus `testing/` fakes/fixtures).
+
+Do **not** reintroduce a nested `core.` package tree or a generic `presentation/` / `usecases/` layout unless the task explicitly requires it.
+
+## Compose
+
+- Material Design 3; use existing `GolfTheme` / `MaterialTheme` tokens.
+- Name composables as nouns (`ActiveRoundScreen`, `HoleMapSection`); keep screens thin — logic in ViewModels.
+- Hoist state; avoid collecting Flows in deep children when the parent already owns state.
+- Prefer `collectAsStateWithLifecycle` for ViewModel state.
+- Modifier order: size/layout → drawing → interaction → padding (follow existing screens).
+- Handle loading / error / empty explicitly (e.g. round unavailable + retry).
+- Keep accessibility: content descriptions on icon actions, readable contrast on map overlays.
+
+## Testing & quality
+
+- Unit-test domain math, parsers, repositories, and ViewModels; use fakes under `testing/` and MockK where needed.
+- Use `StandardTestDispatcher` / `runTest` for coroutine ViewModel tests.
+- Respect ktlint and detekt; do not disable checks to land a change.
+- Prefer focused unit tests over new UI instrumentation unless asked.

@@ -3,8 +3,13 @@ package com.vctrch.golfgps.di
 import android.content.Context
 import androidx.room.Room
 import com.vctrch.golfgps.BuildConfig
+import com.vctrch.golfgps.data.analytics.FirebaseGolfAnalytics
+import com.vctrch.golfgps.data.analytics.GolfAnalytics
 import com.vctrch.golfgps.data.local.*
+import com.vctrch.golfgps.data.opengolf.OpenGolfConfig
+import com.vctrch.golfgps.data.opengolf.OpenGolfSecureStore
 import com.vctrch.golfgps.data.remote.*
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -22,6 +27,14 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
+abstract class AnalyticsModule {
+    @Binds
+    @Singleton
+    abstract fun bindGolfAnalytics(impl: FirebaseGolfAnalytics): GolfAnalytics
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
 object AppModule {
     @Provides
     @Singleton
@@ -33,7 +46,18 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideHttpClient(json: Json): HttpClient {
+    fun provideOpenGolfConfig(): OpenGolfConfig =
+        OpenGolfConfig(
+            apiKey = BuildConfig.OPENGOLF_API_KEY,
+            baseUrl = BuildConfig.OPENGOLF_BASE_URL,
+            clientId = BuildConfig.OPENGOLF_CLIENT_ID,
+            redirectUri = BuildConfig.OPENGOLF_REDIRECT_URI,
+        )
+
+    @Provides
+    @Singleton
+    @CatalogHttpClient
+    fun provideCatalogHttpClient(json: Json): HttpClient {
         return HttpClient(OkHttp) {
             expectSuccess = true
             install(ContentNegotiation) {
@@ -55,13 +79,52 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideOpenGolfApi(client: HttpClient): OpenGolfApi {
-        return KtorOpenGolfApi(client, BuildConfig.OPENGOLF_BASE_URL)
+    @OpenGolfWriteHttpClient
+    fun provideOpenGolfWriteHttpClient(): HttpClient {
+        return HttpClient(OkHttp) {
+            expectSuccess = false
+            install(HttpTimeout) {
+                connectTimeoutMillis = 15_000
+                requestTimeoutMillis = 30_000
+                socketTimeoutMillis = 30_000
+            }
+        }
     }
 
     @Provides
     @Singleton
-    fun provideOsmGolfSource(client: HttpClient): OsmGolfSource {
+    @OpenGolfAuthHttpClient
+    fun provideOpenGolfAuthHttpClient(): HttpClient {
+        return HttpClient(OkHttp) {
+            expectSuccess = false
+            engine {
+                config {
+                    followRedirects(false)
+                    followSslRedirects(false)
+                }
+            }
+            install(HttpTimeout) {
+                connectTimeoutMillis = 15_000
+                requestTimeoutMillis = 30_000
+                socketTimeoutMillis = 30_000
+            }
+        }
+    }
+
+    @Provides
+    @Singleton
+    fun provideOpenGolfApi(
+        @CatalogHttpClient client: HttpClient,
+        config: OpenGolfConfig,
+    ): OpenGolfApi {
+        return KtorOpenGolfApi(client, config.baseUrl)
+    }
+
+    @Provides
+    @Singleton
+    fun provideOsmGolfSource(
+        @CatalogHttpClient client: HttpClient,
+    ): OsmGolfSource {
         return OverpassGolfSource(client)
     }
 
@@ -90,5 +153,13 @@ object AppModule {
         @ApplicationContext context: Context,
     ): UserPreferencesRepository {
         return UserPreferencesRepository.create(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideOpenGolfSecureStore(
+        @ApplicationContext context: Context,
+    ): OpenGolfSecureStore {
+        return OpenGolfSecureStore.create(context)
     }
 }

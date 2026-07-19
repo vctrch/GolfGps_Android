@@ -3,11 +3,12 @@ package com.vctrch.golfgps.feature.search
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.GolfCourse
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -97,9 +98,19 @@ fun CourseSearchScreen(
                 )
             }
             else -> {
-                SearchEmptyState(modifier = Modifier.weight(1f))
-                Spacer(modifier = Modifier.height(16.dp))
-                SupportDeveloperCard()
+                val scroll = rememberScrollState()
+                Column(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .verticalScroll(scroll),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    SearchEmptyState()
+                    DataSourcesInfoCard()
+                    HelpMapCourseCard(recentCourse = state.lastSelectedCourse)
+                    SupportDeveloperCard()
+                }
             }
         }
     }
@@ -139,20 +150,12 @@ private fun SearchResultsSection(
 
 @Composable
 private fun SearchEmptyState(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Icon(
-            Icons.Default.GolfCourse,
-            contentDescription = null,
-            tint = GolfTheme.Fairway,
-            modifier = Modifier.height(48.dp),
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("Type at least 2 characters to search")
-    }
+    Text(
+        "Type at least 2 characters to search",
+        modifier = modifier.fillMaxWidth().padding(vertical = 4.dp),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable

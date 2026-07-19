@@ -82,7 +82,12 @@ class HoleTargetTest {
     fun playerYardsToGreen_returnsDistanceWhenOnHole() {
         val tee = TestFixtures.sampleTee
         val green = TestFixtures.offset(northYards = 380.0)
-        val hole = TestFixtures.holeTarget(tee = tee, green = green)
+        val hole =
+            TestFixtures.holeTarget(
+                tee = tee,
+                green = green,
+                source = HoleTargetSource.OPEN_STREET_MAP,
+            )
         val midHole = TestFixtures.offset(northYards = 190.0)
 
         assertEquals(GeoMath.yards(midHole, green), hole.playerYardsToGreen(midHole))
@@ -92,9 +97,29 @@ class HoleTargetTest {
     fun playerYardsToGreen_nullWhenOffHole() {
         val tee = TestFixtures.sampleTee
         val green = TestFixtures.offset(northYards = 380.0)
-        val hole = TestFixtures.holeTarget(tee = tee, green = green)
+        val hole =
+            TestFixtures.holeTarget(
+                tee = tee,
+                green = green,
+                source = HoleTargetSource.OPEN_STREET_MAP,
+            )
         val farAway = TestFixtures.offset(northYards = 5_000.0)
 
         assertNull(hole.playerYardsToGreen(farAway))
+    }
+
+    @Test
+    fun playerYardsToGreen_nullWhenGreenUnreliable() {
+        val tee = TestFixtures.sampleTee
+        val green = TestFixtures.offset(northYards = 380.0)
+        val hole =
+            TestFixtures.holeTarget(
+                tee = tee,
+                green = green,
+                source = HoleTargetSource.SCORECARD_FALLBACK,
+            )
+        val midHole = TestFixtures.offset(northYards = 190.0)
+
+        assertNull(hole.playerYardsToGreen(midHole))
     }
 }

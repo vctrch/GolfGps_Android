@@ -1,4 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Golf GPS</string>
+    <string name="app_name">Community Golf</string>
+    <string name="android_auto_idle_title">Community Golf</string>
+    <string name="android_auto_open_on_phone">Open Community Golf on your phone</string>
+    <string name="android_auto_open_on_phone_detail">Search for a course and start a round.</string>
+    <string name="android_auto_showing_on_auto">Showing on Android Auto</string>
+    <string name="android_auto_available_hint">Android Auto available — open Community Golf in your cart for dash yardage</string>
+    <string name="android_auto_previous">Previous</string>
+    <string name="android_auto_next">Next</string>
+    <string name="android_auto_show_tee">Show Tee</string>
+    <string name="android_auto_hide_tee">Hide Tee</string>
+    <string name="android_auto_refresh">Refresh</string>
+    <string name="support_card_title">Support Community Golf</string>
+    <string name="support_card_subtitle">Community Golf is free! An optional tip helps cover ongoing development and maintenance costs.</string>
+    <string name="location_rationale_title">Location for live yardage</string>
+    <string name="location_rationale_body">Community Golf uses your location while you play to show distance to the green and tee. Location is used only on this device for yardage and is not required to search for courses.</string>
+    <string name="location_rationale_continue">Continue</string>
+    <string name="location_rationale_not_now">Not now</string>
+    <string-array name="android_auto_hosts_allowlist">
+        <item>com.google.android.projection.gearhead</item>
+        <item>com.google.android.apps.automotive.templates.host</item>
+    </string-array>
 </resources>

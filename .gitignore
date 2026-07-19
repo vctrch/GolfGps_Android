@@ -12,3 +12,10 @@
 *.aab
 *.hprof
 .kotlin/
+
+# Agent contributor secrets (never commit)
+.cursor/agent.env
+.env
+.env.*
+!.env.example
+!.cursor/agent.env.example
