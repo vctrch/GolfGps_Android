@@ -26,6 +26,7 @@ fun OsmHoleMap(
     userLocation: LatLng?,
     mapDisplayStyle: MapDisplayStyle,
     modifier: Modifier = Modifier,
+    onCameraCenterChanged: (LatLng) -> Unit = {},
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -165,6 +166,8 @@ fun OsmHoleMap(
                     mapView.controller.setCenter(greenPoint)
                 }
             }
+            val center = mapView.mapCenter
+            onCameraCenterChanged(LatLng(center.latitude, center.longitude))
             mapView.invalidate()
         },
         onRelease = { mapView ->

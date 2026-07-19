@@ -14,6 +14,8 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -31,8 +33,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.vctrch.golfgps.data.remote.OSMCourseLinks
 import com.vctrch.golfgps.data.remote.OpenGolfCourseLinks
 import com.vctrch.golfgps.domain.GolfCourseSummary
+import com.vctrch.golfgps.domain.LatLng
+import com.vctrch.golfgps.feature.contribute.OpenGolfAccountViewModel
+import com.vctrch.golfgps.feature.contribute.OpenGolfSignInSheet
 import com.vctrch.golfgps.ui.theme.GolfTheme
 
 @Composable
@@ -66,6 +74,15 @@ fun DataSourcesInfoCard(modifier: Modifier = Modifier) {
                 ),
         )
         InfoSection(
+            title = "How we pick a tee",
+            items =
+                listOf(
+                    "Tagged OSM tee boxes for the hole are preferred when available.",
+                    "Otherwise we match nearby orphan tee boxes using published OpenGolf yardages.",
+                    "If needed we fall back to the start of a fairway line — labeled as fairway-derived.",
+                ),
+        )
+        InfoSection(
             title = "What to expect",
             items =
                 listOf(
@@ -73,6 +90,15 @@ fun DataSourcesInfoCard(modifier: Modifier = Modifier) {
                     "Estimated holes can still show yardage to green, " +
                         "but they may be less exact than fully mapped ones.",
                     "Your yardage also depends on phone signal, open sky, and precise location.",
+                ),
+        )
+        InfoSection(
+            title = "Help improve the map",
+            items =
+                listOf(
+                    "Sign in with OpenGolf during a round to mark tee, green, or pin on the hole map.",
+                    "Course facts (phone, website, name) can be suggested from Course details & account.",
+                    "Fairways and boundaries are still best edited on OpenStreetMap.",
                 ),
         )
         Text(
@@ -87,23 +113,49 @@ fun DataSourcesInfoCard(modifier: Modifier = Modifier) {
 fun HelpMapCourseCard(
     recentCourse: GolfCourseSummary? = null,
     modifier: Modifier = Modifier,
+    accountViewModel: OpenGolfAccountViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
+    val auth by accountViewModel.authState.collectAsStateWithLifecycle()
+    var showSignIn by remember { mutableStateOf(false) }
 
     ExpandableInfoCard(
         title = "Help map a course",
         subtitle =
-            "OpenGolf is a community driven resource anyone can edit. " +
-                "Tap to fix a scorecard, add a missing course, or improve map data.",
+            "OpenGolf and OpenStreetMap are community-driven. " +
+                "Sign in to update from the app, or open the web tools below.",
         icon = { Icon(Icons.Default.VolunteerActivism, contentDescription = null, tint = GolfTheme.Fairway) },
         modifier = modifier,
     ) {
         Text(
-            "Open a course on OpenGolf to edit its scorecard, or follow the map link " +
-                "on that page to draw tees, fairways and greens on OpenStreetMap.",
+            "During a round, mark tee, green, or pin on the hole map. " +
+                "Sign in once with OpenGolf, then contribute from the course.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        TextButton(onClick = { showSignIn = true }, modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    if (auth.isSignedIn) Icons.Default.VerifiedUser else Icons.Default.PersonAdd,
+                    contentDescription = null,
+                    tint = GolfTheme.Fairway,
+                )
+                Text(
+                    if (auth.isSignedIn) {
+                        "Signed in as ${auth.email}"
+                    } else {
+                        "Create account or sign in with OpenGolf"
+                    },
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
         if (recentCourse != null) {
             LinkRow(
                 title = "Improve ${recentCourse.name}",
@@ -111,6 +163,27 @@ fun HelpMapCourseCard(
                 onClick = {
                     context.startActivity(
                         Intent(Intent.ACTION_VIEW, Uri.parse(OpenGolfCourseLinks.coursePage(recentCourse))),
+                    )
+                },
+            )
+            recentCourse.osmId?.let { osmId ->
+                LinkRow(
+                    title = "Open course boundary on OSM",
+                    subtitle = "Browse the linked golf course way",
+                    onClick = {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse(OSMCourseLinks.courseWay(osmId))),
+                        )
+                    },
+                )
+            }
+            LinkRow(
+                title = "Edit map near this course",
+                subtitle = "Open the OpenStreetMap iD editor",
+                onClick = {
+                    val center = LatLng(recentCourse.latitude, recentCourse.longitude)
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW, Uri.parse(OSMCourseLinks.editMap(center))),
                     )
                 },
             )
@@ -128,6 +201,13 @@ fun HelpMapCourseCard(
             onClick = {
                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(OpenGolfCourseLinks.SUBMIT_COURSE)))
             },
+        )
+    }
+
+    if (showSignIn) {
+        OpenGolfSignInSheet(
+            authStore = accountViewModel.openGolfAuthStore(),
+            onDismiss = { showSignIn = false },
         )
     }
 }

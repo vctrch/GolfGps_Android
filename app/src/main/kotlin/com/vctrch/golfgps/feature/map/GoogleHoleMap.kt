@@ -29,6 +29,7 @@ fun GoogleHoleMap(
     userLocation: LatLng?,
     mapDisplayStyle: MapDisplayStyle,
     modifier: Modifier = Modifier,
+    onCameraCenterChanged: (LatLng) -> Unit = {},
 ) {
     val green = MapsLatLng(hole.green.latitude, hole.green.longitude)
     val tee = hole.tee?.let { MapsLatLng(it.latitude, it.longitude) }
@@ -52,6 +53,10 @@ fun GoogleHoleMap(
     LaunchedEffect(camera.isMoving, camera.cameraMoveStartedReason) {
         if (camera.cameraMoveStartedReason == CameraMoveStartedReason.GESTURE) {
             userAdjustedCamera = true
+        }
+        if (!camera.isMoving) {
+            val target = camera.position.target
+            onCameraCenterChanged(LatLng(target.latitude, target.longitude))
         }
     }
 

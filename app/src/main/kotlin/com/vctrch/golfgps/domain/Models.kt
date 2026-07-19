@@ -99,9 +99,3 @@ enum class MapDisplayStyle(val storageKey: String, val title: String) {
     SATELLITE("satellite", "Satellite"),
     HYBRID("hybrid", "Hybrid"),
 }
-
-enum class GolfDataError {
-    INVALID_RESPONSE,
-    COURSE_NOT_FOUND,
-    NO_HOLE_DATA,
-}

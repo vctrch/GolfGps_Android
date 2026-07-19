@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.coroutines.cancellation.CancellationException
 
 data class RoundUiState(
     val searchQuery: String = "",
@@ -244,6 +245,8 @@ class RoundViewModel
                         )
                     }
                     beginBackgroundHoleGPSRefresh(force = false)
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     if (!displayedCachedCourse) {
                         _uiState.update {
@@ -397,6 +400,8 @@ class RoundViewModel
                         if (searchId != activeSearchId) return@launch
                         analytics.logSearch(query, results.size)
                         _uiState.update { it.copy(searchResults = results, isSearching = false) }
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         if (searchId != activeSearchId) return@launch
                         if (isIgnorableSearchError(e)) return@launch

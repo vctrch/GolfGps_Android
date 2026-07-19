@@ -3,6 +3,11 @@
 # MAPS_API_KEY=your_google_maps_key
 # PRIVACY_POLICY_URL=https://example.com/community-golf/privacy
 #
+# OpenGolf contributions (Sign in with OpenGolf + map updates):
+# OPENGOLF_API_KEY=ogapi_your_developer_key
+# OPENGOLF_CLIENT_ID=com.vctrch.golfgps
+# OPENGOLF_REDIRECT_URI=https://api.opengolfapi.org/oauth/callback
+#
 # Optional release signing (paths relative to the repo root):
 # RELEASE_STORE_FILE=keystore/community-golf-upload.jks
 # RELEASE_STORE_PASSWORD=...

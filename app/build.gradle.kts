@@ -34,6 +34,10 @@ android {
 
     val mapsApiKey = localProp("MAPS_API_KEY")
     val privacyPolicyUrl = localProp("PRIVACY_POLICY_URL")
+    val openGolfApiKey = localProp("OPENGOLF_API_KEY")
+    val openGolfClientId = localProp("OPENGOLF_CLIENT_ID").ifEmpty { "com.vctrch.golfgps" }
+    val openGolfRedirectUri =
+        localProp("OPENGOLF_REDIRECT_URI").ifEmpty { "https://api.opengolfapi.org/oauth/callback" }
 
     defaultConfig {
         applicationId = "com.vctrch.golfgps"
@@ -47,6 +51,13 @@ android {
         buildConfigField("String", "OPENGOLF_BASE_URL", "\"https://api.opengolfapi.org/\"")
         buildConfigField("String", "MAPS_API_KEY", "\"${mapsApiKey.ifEmpty { "YOUR_MAPS_API_KEY" }}\"")
         buildConfigField("String", "PRIVACY_POLICY_URL", "\"${privacyPolicyUrl.replace("\"", "\\\"")}\"")
+        buildConfigField("String", "OPENGOLF_API_KEY", "\"${openGolfApiKey.replace("\"", "\\\"")}\"")
+        buildConfigField("String", "OPENGOLF_CLIENT_ID", "\"${openGolfClientId.replace("\"", "\\\"")}\"")
+        buildConfigField(
+            "String",
+            "OPENGOLF_REDIRECT_URI",
+            "\"${openGolfRedirectUri.replace("\"", "\\\"")}\"",
+        )
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey.ifEmpty { "YOUR_MAPS_API_KEY" }
     }
 
@@ -125,6 +136,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.security.crypto)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

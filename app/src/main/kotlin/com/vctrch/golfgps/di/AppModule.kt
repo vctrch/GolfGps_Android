@@ -6,6 +6,7 @@ import com.vctrch.golfgps.BuildConfig
 import com.vctrch.golfgps.data.analytics.FirebaseGolfAnalytics
 import com.vctrch.golfgps.data.analytics.GolfAnalytics
 import com.vctrch.golfgps.data.local.*
+import com.vctrch.golfgps.data.opengolf.OpenGolfSecureStore
 import com.vctrch.golfgps.data.remote.*
 import dagger.Binds
 import dagger.Module
@@ -101,5 +102,13 @@ object AppModule {
         @ApplicationContext context: Context,
     ): UserPreferencesRepository {
         return UserPreferencesRepository.create(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideOpenGolfSecureStore(
+        @ApplicationContext context: Context,
+    ): OpenGolfSecureStore {
+        return OpenGolfSecureStore.create(context)
     }
 }

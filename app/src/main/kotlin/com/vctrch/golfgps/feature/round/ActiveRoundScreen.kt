@@ -34,12 +34,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vctrch.golfgps.R
 import com.vctrch.golfgps.domain.GeoMath
 import com.vctrch.golfgps.domain.HoleTarget
@@ -49,6 +53,11 @@ import com.vctrch.golfgps.domain.TeeMappingConfidence
 import com.vctrch.golfgps.domain.greenMappingConfidence
 import com.vctrch.golfgps.domain.showsEstimatedQualifier
 import com.vctrch.golfgps.domain.teeMappingConfidence
+import com.vctrch.golfgps.feature.contribute.ContributeSubmitSheet
+import com.vctrch.golfgps.feature.contribute.HoleContributionViewModel
+import com.vctrch.golfgps.feature.contribute.ImproveCourseMappingCard
+import com.vctrch.golfgps.feature.contribute.OpenGolfSignInSheet
+import com.vctrch.golfgps.feature.contribute.OpenGolfTermsSheet
 import com.vctrch.golfgps.feature.map.HoleMapSection
 import com.vctrch.golfgps.location.LocationUiStatus
 import com.vctrch.golfgps.ui.theme.GolfTheme
@@ -67,10 +76,20 @@ fun ActiveRoundScreen(
     onOpenLocationSettings: () -> Unit,
     onRequestPreciseLocation: () -> Unit,
     isAndroidAutoConnected: Boolean = false,
+    contributionViewModel: HoleContributionViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
 ) {
     val course = state.loadedCourse ?: return
     val hole = state.currentHole ?: return
+    val contribution by contributionViewModel.uiState.collectAsStateWithLifecycle()
+    val auth by contributionViewModel.authState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(hole.number) {
+        contributionViewModel.resetForHoleChange()
+    }
+    LaunchedEffect(auth.phase) {
+        contributionViewModel.handleAuthPhase(auth.phase)
+    }
 
     Scaffold(
         modifier = modifier,
@@ -115,6 +134,13 @@ fun ActiveRoundScreen(
                 userLocation = state.userLocation,
                 mapDisplayStyle = mapDisplayStyle,
                 onMapDisplayStyleChange = onMapDisplayStyleChange,
+                isPlaceMode = contribution.isPlaceMode,
+                isSignedIn = auth.isSignedIn,
+                contributionStatus = contribution.statusMessage,
+                contributionError = contribution.errorMessage,
+                onBeginPlaceMode = contributionViewModel::beginPlaceMode,
+                onCancelPlaceMode = contributionViewModel::cancelPlaceMode,
+                onMarkHere = contributionViewModel::markHere,
             )
             HolePicker(course = course, selectedHoleNumber = state.selectedHoleNumber, onSelectHole = onSelectHole)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -126,6 +152,7 @@ fun ActiveRoundScreen(
                 selectedHoleNumber = state.selectedHoleNumber,
                 onSelectHole = onSelectHole,
             )
+            ImproveCourseMappingCard(course = course, hole = hole)
             Text(
                 hole.greenMappingConfidence.detail,
                 style = MaterialTheme.typography.bodySmall,
@@ -137,6 +164,52 @@ fun ActiveRoundScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+
+    when (val sheet = contribution.presentedSheet) {
+        HoleContributionViewModel.PresentedSheet.Contribute -> {
+            ContributeSubmitSheet(
+                holeNumber = hole.number,
+                state = contribution,
+                userLocation = state.userLocation,
+                onTypeChange = contributionViewModel::setSelectedType,
+                onNoteChange = contributionViewModel::setNote,
+                onUseGps = contributionViewModel::useGps,
+                onDismiss = contributionViewModel::dismissSheet,
+                onSubmit = {
+                    contributionViewModel.submitDraft(
+                        courseId = course.summary.id,
+                        holeNumber = hole.number,
+                        userLocation = state.userLocation,
+                        userAccuracyMeters = null,
+                        dismissOnSuccess = true,
+                    )
+                },
+            )
+        }
+        HoleContributionViewModel.PresentedSheet.SignIn -> {
+            OpenGolfSignInSheet(
+                authStore = contributionViewModel.openGolfAuthStore(),
+                onDismiss = contributionViewModel::dismissSheet,
+            )
+        }
+        is HoleContributionViewModel.PresentedSheet.Terms -> {
+            OpenGolfTermsSheet(
+                challenge = sheet.challenge,
+                onDismiss = contributionViewModel::dismissSheet,
+                onAccept = {
+                    contributionViewModel.acceptTerms(sheet.challenge.version)
+                    contributionViewModel.submitDraft(
+                        courseId = course.summary.id,
+                        holeNumber = hole.number,
+                        userLocation = state.userLocation,
+                        userAccuracyMeters = null,
+                        dismissOnSuccess = true,
+                    )
+                },
+            )
+        }
+        null -> Unit
     }
 }
 
