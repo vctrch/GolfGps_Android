@@ -29,7 +29,7 @@ Use the real bot account’s noreply email once the machine user exists (update 
 
 ## PR workflow
 
-1. Branch from the requested base (often `develop` or a feature branch).
+1. Branch from the requested base (often `develop` or a feature branch). Name it gitflow-style: `feature/…`, `hotfix/…`, or `release/…` — never `fix/…` or `feat/…`.
 2. Commit only with user approval (or when they asked to submit a PR).
 3. `git push -u origin HEAD` then `gh pr create --base <base>`.
 4. Return the PR URL.

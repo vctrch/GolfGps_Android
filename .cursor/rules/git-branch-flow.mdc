@@ -11,7 +11,12 @@ This project follows the **user-level** `git-workflow` rule. Project specifics b
 
 - Prefer the **current local checkout** (`main`, `develop`, or a topic branch — whatever the user is on).
 - Before substantive work, say: **current branch is X; stay on it?** Wait for confirmation.
-- Do **not** create `feature/…` or `fix/…` branches unless the user asks.
+- Do **not** create a topic branch unless the user asks (or the task is to open a PR).
+- When a PR branch is required, use **gitflow** names only:
+  - `feature/…` — new work (parity, API, UI)
+  - `hotfix/…` — production emergency on `main`
+  - `release/…` — release cut
+- Do **not** use `fix/…`, `feat/…`, or other ad-hoc prefixes.
 - Usual human merge path when *they* choose it: topic → `develop` → `main`. Agents do not drive that merge unless asked.
 
 ## Local vs remote
