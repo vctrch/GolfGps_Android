@@ -3,7 +3,9 @@ package com.vctrch.golfgps.data.opengolf
 import com.vctrch.golfgps.di.OpenGolfWriteHttpClient
 import com.vctrch.golfgps.domain.GolfDataException
 import io.ktor.client.HttpClient
+import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -110,6 +112,41 @@ class OpenGolfContributeClient
                 ?: throw GolfDataException.contributionFailed("Score needs strokes (1–30).")
         }
 
+        /**
+         * Read the signed-in golfer's own Moments (`GET /api/v1/moments`).
+         * Same split as POST: server `appApiKey` + user `accessToken`.
+         */
+        suspend fun listMoments(
+            query: OpenGolfMomentsQuery,
+            appApiKey: String,
+            accessToken: String,
+        ): OpenGolfMomentsListResponse {
+            requireMomentsCredentials(appApiKey, accessToken)
+            val outgoing =
+                query.copy(
+                    player = query.player?.let { OpenGolfIdentity.contributionPlayerId(it) },
+                )
+            val data = get("api/v1/moments", outgoing.queryItems(), appApiKey, accessToken)
+            if (data.isBlank()) {
+                throw GolfDataException.contributionFailed("OpenGolf returned an empty response.")
+            }
+            return runCatching { OpenGolfMomentsListResponse.decode(json, data) }.getOrElse {
+                throw GolfDataException.contributionFailed("Could not read OpenGolf's moments response.")
+            }
+        }
+
+        private fun requireMomentsCredentials(
+            appApiKey: String,
+            accessToken: String,
+        ) {
+            if (appApiKey.trim().isEmpty()) {
+                throw GolfDataException.contributionFailed("Something went wrong. Please try again later.")
+            }
+            if (accessToken.trim().isEmpty()) {
+                throw GolfDataException.authenticationFailed("Sign in with OpenGolf to use Moments.")
+            }
+        }
+
         private fun decodeMomentResult(data: String): OpenGolfIngestResult {
             val decoded =
                 data.takeIf { it.isNotBlank() }
@@ -148,6 +185,39 @@ class OpenGolfContributeClient
                         header("X-Accept-Terms", acceptedTerms)
                     }
                     setBody(body.toString())
+                }
+            val text = response.bodyAsText()
+            if (!response.status.isSuccess()) {
+                val apiError = runCatching { json.decodeFromString<OpenGolfApiErrorBody>(text) }.getOrNull()
+                apiError?.termsChallenge()?.let { challenge ->
+                    throw GolfDataException.termsAcceptanceRequired(challenge.version, challenge.termsUrl)
+                }
+                throw GolfDataException.contributionFailed(
+                    apiError?.error?.takeIf { it.isNotBlank() }
+                        ?: "Request failed (${response.status.value})",
+                )
+            }
+            return text
+        }
+
+        private suspend fun get(
+            path: String,
+            queryParams: List<Pair<String, String>>,
+            appApiKey: String,
+            accessToken: String,
+        ): String {
+            val acceptedTerms = termsStore.acceptedVersionSnapshot()
+            val response =
+                client.get("${config.apiBaseUrl}/$path") {
+                    header(HttpHeaders.Accept, "application/json")
+                    header("X-API-Key", appApiKey)
+                    if (accessToken.isNotBlank()) {
+                        header("X-OpenGolf-Token", accessToken)
+                    }
+                    if (!acceptedTerms.isNullOrBlank()) {
+                        header("X-Accept-Terms", acceptedTerms)
+                    }
+                    queryParams.forEach { (name, value) -> parameter(name, value) }
                 }
             val text = response.bodyAsText()
             if (!response.status.isSuccess()) {
