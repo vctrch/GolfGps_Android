@@ -64,6 +64,25 @@ class OpenGolfAuthCodeExtractionTest {
     }
 }
 
+class OpenGolfMomentTypeTest {
+    @Test
+    fun roundIngestibleCases_areIosOrder() {
+        assertEquals(
+            listOf(
+                OpenGolfMomentType.BREADCRUMB,
+                OpenGolfMomentType.SWING,
+                OpenGolfMomentType.PUTT,
+                OpenGolfMomentType.SCORE,
+                OpenGolfMomentType.PIN,
+                OpenGolfMomentType.TEE,
+                OpenGolfMomentType.GREEN,
+                OpenGolfMomentType.MESSAGE,
+            ),
+            OpenGolfMomentType.roundIngestibleCases,
+        )
+    }
+}
+
 class OpenGolfApiErrorBodyTest {
     @Test
     fun termsChallenge_parsesRequiredError() {

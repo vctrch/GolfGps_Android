@@ -17,7 +17,10 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
@@ -55,25 +58,32 @@ class OpenGolfContributeClientTest {
     private fun sampleSubmission(
         type: OpenGolfMomentType = OpenGolfMomentType.TEE,
         note: String? = "front left",
+        sessionId: String? = null,
+        strokes: Int? = null,
+        accuracyMeters: Double? = 4.0,
     ) = OpenGolfMomentSubmission(
         momentType = type,
         latitude = 36.568,
         longitude = -121.949,
-        accuracyMeters = 4.0,
+        accuracyMeters = accuracyMeters,
         courseId = "course-1",
         hole = 7,
         playerId = "ogid_abcdef",
         note = note,
         dedupKey = "course-1-7-tee-1",
+        sessionId = sessionId,
+        strokes = strokes,
     )
 
     @Test
     fun successMessage_matchesMomentType() {
         val contribute = client { json("""{"ok":true}""") }
-        assertEquals("Tee location submitted for hole 3.", contribute.successMessage(OpenGolfMomentType.TEE, 3))
-        assertEquals("Green location submitted for hole 3.", contribute.successMessage(OpenGolfMomentType.GREEN, 3))
-        assertEquals("Pin location submitted for hole 3.", contribute.successMessage(OpenGolfMomentType.PIN, 3))
-        assertEquals("Local tip submitted for hole 3.", contribute.successMessage(OpenGolfMomentType.BETA, 3))
+        assertEquals("Tee saved for hole 3.", contribute.successMessage(OpenGolfMomentType.TEE, 3))
+        assertEquals("Green saved for hole 3.", contribute.successMessage(OpenGolfMomentType.GREEN, 3))
+        assertEquals("Pin saved for hole 3.", contribute.successMessage(OpenGolfMomentType.PIN, 3))
+        assertEquals("Note saved for hole 3.", contribute.successMessage(OpenGolfMomentType.MESSAGE, 3))
+        assertEquals("Score saved for hole 3.", contribute.successMessage(OpenGolfMomentType.SCORE, 3))
+        assertEquals("Breadcrumb saved for hole 3.", contribute.successMessage(OpenGolfMomentType.BREADCRUMB, 3))
     }
 
     @Test
@@ -99,6 +109,7 @@ class OpenGolfContributeClientTest {
             assertEquals("/api/v1/moments", request.url.encodedPath)
             assertEquals("test-key", request.headers["X-API-Key"])
             assertEquals("access-token", request.headers["X-OpenGolf-Token"])
+            assertEquals("application/json", request.headers[HttpHeaders.Accept])
             val raw = request.bodyText()
             assertTrue(raw.contains("\"moment_type\":\"tee\""))
             assertTrue(raw.contains("\"player_id\":\"cg_abcdef\""))
@@ -106,10 +117,12 @@ class OpenGolfContributeClientTest {
             assertTrue(raw.contains("\"hole\":7"))
             assertTrue(raw.contains("\"note\":\"front left\""))
             assertTrue(raw.contains("\"accuracy_m\":4"))
+            assertTrue(raw.contains("\"consent_scope\":\"contribute\""))
+            assertFalse(raw.contains("session_id"))
         }
 
     @Test
-    fun submitMoment_betaNoteUsesTextPayload() =
+    fun submitMoment_includesSessionIdWhenSet() =
         runTest {
             var rawBody = ""
             val contribute =
@@ -119,14 +132,112 @@ class OpenGolfContributeClientTest {
                 }
 
             contribute.submitMoment(
-                submission = sampleSubmission(type = OpenGolfMomentType.BETA, note = "watch left bunker"),
+                submission = sampleSubmission(sessionId = "sess-1"),
                 appApiKey = "k",
-                accessToken = null,
+                accessToken = "token",
             )
 
-            assertTrue(rawBody.contains("\"moment_type\":\"beta\""))
-            assertTrue(rawBody.contains("\"text\":\"watch left bunker\""))
-            assertTrue(rawBody.contains("\"category\":\"general\""))
+            assertTrue(rawBody.contains("\"session_id\":\"sess-1\""))
+        }
+
+    @Test
+    fun submitMoment_omitsSessionIdWhenNull() =
+        runTest {
+            var rawBody = ""
+            val contribute =
+                client { request ->
+                    rawBody = request.bodyText()
+                    json("""{"ok":true}""")
+                }
+
+            contribute.submitMoment(
+                submission = sampleSubmission(sessionId = null),
+                appApiKey = "k",
+                accessToken = "token",
+            )
+
+            assertFalse(rawBody.contains("session_id"))
+        }
+
+    @Test
+    fun submitMoment_scoreSendsStrokesPayloadWithoutNote() =
+        runTest {
+            var rawBody = ""
+            val contribute =
+                client { request ->
+                    rawBody = request.bodyText()
+                    json("""{"ok":true}""")
+                }
+
+            contribute.submitMoment(
+                submission =
+                    sampleSubmission(
+                        type = OpenGolfMomentType.SCORE,
+                        note = "great putt",
+                        strokes = 4,
+                    ),
+                appApiKey = "k",
+                accessToken = "token",
+            )
+
+            val payload = json.parseToJsonElement(rawBody).jsonObject["payload"]!!.jsonObject
+            assertEquals(4, payload["strokes"]!!.jsonPrimitive.content.toInt())
+            assertEquals(7, payload["hole"]!!.jsonPrimitive.content.toInt())
+            assertFalse(payload.containsKey("note"))
+            assertFalse(payload.containsKey("text"))
+            assertFalse(payload.containsKey("category"))
+        }
+
+    @Test
+    fun submitMoment_messageSendsBodyPayload() =
+        runTest {
+            var rawBody = ""
+            val contribute =
+                client { request ->
+                    rawBody = request.bodyText()
+                    json("""{"ok":true}""")
+                }
+
+            contribute.submitMoment(
+                submission =
+                    sampleSubmission(
+                        type = OpenGolfMomentType.MESSAGE,
+                        note = "watch left bunker",
+                    ),
+                appApiKey = "k",
+                accessToken = "token",
+            )
+
+            val payload = json.parseToJsonElement(rawBody).jsonObject["payload"]!!.jsonObject
+            assertEquals("watch left bunker", payload["body"]!!.jsonPrimitive.content)
+            assertFalse(payload.containsKey("note"))
+            assertFalse(payload.containsKey("text"))
+        }
+
+    @Test
+    fun submitMoment_blankAccessToken_throwsAuthenticationFailed() =
+        runTest {
+            val contribute = client { json("""{"ok":true}""") }
+            try {
+                contribute.submitMoment(sampleSubmission(), "k", null)
+                fail("expected GolfDataException")
+            } catch (e: GolfDataException) {
+                assertEquals(GolfDataError.AUTHENTICATION_FAILED, e.error)
+                assertTrue(e.message!!.contains("Sign in with OpenGolf", ignoreCase = false))
+            }
+        }
+
+    @Test
+    fun submitMoment_blankApiKey_throwsContributionFailed() =
+        runTest {
+            val contribute = client { json("""{"ok":true}""") }
+            try {
+                contribute.submitMoment(sampleSubmission(), "  ", "token")
+                fail("expected GolfDataException")
+            } catch (e: GolfDataException) {
+                assertEquals(GolfDataError.CONTRIBUTION_FAILED, e.error)
+                assertTrue(e.message!!.contains("try again later", ignoreCase = true))
+            }
         }
 
     @Test
@@ -134,7 +245,7 @@ class OpenGolfContributeClientTest {
         runTest {
             val contribute = client { json("") }
             try {
-                contribute.submitMoment(sampleSubmission(), "k", null)
+                contribute.submitMoment(sampleSubmission(), "k", "token")
                 fail("expected GolfDataException")
             } catch (e: GolfDataException) {
                 assertEquals(GolfDataError.CONTRIBUTION_FAILED, e.error)
@@ -147,11 +258,13 @@ class OpenGolfContributeClientTest {
         runTest {
             val contribute = client { json("""{"ok":false}""") }
             try {
-                contribute.submitMoment(sampleSubmission(), "k", null)
+                contribute.submitMoment(sampleSubmission(), "k", "token")
                 fail("expected GolfDataException")
             } catch (e: GolfDataException) {
                 assertEquals(GolfDataError.CONTRIBUTION_FAILED, e.error)
                 assertTrue(e.message!!.contains("did not accept", ignoreCase = true))
+                assertTrue(e.message!!.contains("Moment"))
+                assertFalse(e.message!!.contains("map update", ignoreCase = true))
             }
         }
 

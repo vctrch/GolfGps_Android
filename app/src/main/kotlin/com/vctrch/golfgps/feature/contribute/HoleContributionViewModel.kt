@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 import javax.inject.Inject
 import kotlin.math.abs
 
@@ -180,6 +181,7 @@ class HoleContributionViewModel
                 _uiState.update { it.copy(isSubmitting = true) }
                 try {
                     val type = _uiState.value.selectedType
+                    val sessionId: String? = null
                     contributeClient.submitMoment(
                         submission =
                             OpenGolfMomentSubmission(
@@ -193,7 +195,9 @@ class HoleContributionViewModel
                                 note = _uiState.value.note,
                                 dedupKey =
                                     "$courseId-$holeNumber-${type.rawValue}-" +
-                                        "${System.currentTimeMillis() / 1000}",
+                                        "${sessionId ?: "nosession"}-${UUID.randomUUID()}",
+                                sessionId = sessionId,
+                                strokes = null,
                             ),
                         appApiKey = apiKey,
                         accessToken = auth.accessToken,

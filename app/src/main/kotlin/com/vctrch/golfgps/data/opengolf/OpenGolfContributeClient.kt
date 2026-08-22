@@ -8,9 +8,11 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
@@ -32,6 +34,7 @@ class OpenGolfContributeClient
             appApiKey: String,
             accessToken: String?,
         ): OpenGolfIngestResult {
+            requireMomentCredentials(appApiKey, accessToken)
             val body =
                 buildJsonObject {
                     put("moment_type", submission.momentType.rawValue)
@@ -43,17 +46,19 @@ class OpenGolfContributeClient
                     put("dedup_key", submission.dedupKey)
                     put("recorded_at", Instant.now().toString())
                     put("consent_scope", "contribute")
+                    submission.sessionId?.trim()?.takeIf { it.isNotEmpty() }?.let { put("session_id", it) }
                     submission.accuracyMeters?.let { put("accuracy_m", it) }
                     putJsonObject("payload") {
                         put("hole", submission.hole)
-                        val note = submission.note?.trim().orEmpty()
-                        if (note.isNotEmpty()) {
-                            when (submission.momentType) {
-                                OpenGolfMomentType.BETA -> {
-                                    put("text", note)
-                                    put("category", "general")
-                                }
-                                else -> put("note", note)
+                        when (submission.momentType) {
+                            OpenGolfMomentType.SCORE -> {
+                                put("strokes", scoreStrokesOrThrow(submission))
+                            }
+                            OpenGolfMomentType.MESSAGE -> {
+                                submission.note?.trim()?.takeIf { it.isNotEmpty() }?.let { put("body", it) }
+                            }
+                            else -> {
+                                submission.note?.trim()?.takeIf { it.isNotEmpty() }?.let { put("note", it) }
                             }
                         }
                     }
@@ -85,13 +90,24 @@ class OpenGolfContributeClient
         fun successMessage(
             type: OpenGolfMomentType,
             holeNumber: Int,
-        ): String {
-            return when (type) {
-                OpenGolfMomentType.TEE -> "Tee location submitted for hole $holeNumber."
-                OpenGolfMomentType.GREEN -> "Green location submitted for hole $holeNumber."
-                OpenGolfMomentType.PIN -> "Pin location submitted for hole $holeNumber."
-                OpenGolfMomentType.BETA -> "Local tip submitted for hole $holeNumber."
+        ): String = "${type.label} saved for hole $holeNumber."
+
+        private fun requireMomentCredentials(
+            appApiKey: String,
+            accessToken: String?,
+        ) {
+            if (appApiKey.isBlank()) {
+                throw GolfDataException.contributionFailed("Something went wrong. Please try again later.")
             }
+            if (accessToken.isNullOrBlank()) {
+                throw GolfDataException.authenticationFailed("Sign in with OpenGolf to use Moments.")
+            }
+        }
+
+        private fun scoreStrokesOrThrow(submission: OpenGolfMomentSubmission): Int {
+            submission.strokes?.takeIf { it in 1..30 }?.let { return it }
+            return submission.note?.trim()?.toIntOrNull()?.takeIf { it in 1..30 }
+                ?: throw GolfDataException.contributionFailed("Score needs strokes (1–30).")
         }
 
         private fun decodeMomentResult(data: String): OpenGolfIngestResult {
@@ -108,14 +124,14 @@ class OpenGolfContributeClient
                 )
             }
             if (decoded.ok == false) {
-                throw GolfDataException.contributionFailed("OpenGolf did not accept this map update.")
+                throw GolfDataException.contributionFailed("OpenGolf did not accept this Moment.")
             }
             return decoded
         }
 
         private suspend fun post(
             path: String,
-            body: kotlinx.serialization.json.JsonObject,
+            body: JsonObject,
             appApiKey: String,
             accessToken: String?,
         ): String {
@@ -123,6 +139,7 @@ class OpenGolfContributeClient
             val response =
                 client.post("${config.apiBaseUrl}/$path") {
                     contentType(ContentType.Application.Json)
+                    header(HttpHeaders.Accept, "application/json")
                     header("X-API-Key", appApiKey)
                     if (!accessToken.isNullOrBlank()) {
                         header("X-OpenGolf-Token", accessToken)
