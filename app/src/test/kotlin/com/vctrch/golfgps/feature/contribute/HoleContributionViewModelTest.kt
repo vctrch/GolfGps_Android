@@ -52,12 +52,7 @@ class HoleContributionViewModelTest {
         every { contributeClient.successMessage(any(), any()) } answers {
             val type = firstArg<OpenGolfMomentType>()
             val hole = secondArg<Int>()
-            when (type) {
-                OpenGolfMomentType.TEE -> "Tee location submitted for hole $hole."
-                OpenGolfMomentType.GREEN -> "Green location submitted for hole $hole."
-                OpenGolfMomentType.PIN -> "Pin location submitted for hole $hole."
-                OpenGolfMomentType.BETA -> "Local tip submitted for hole $hole."
-            }
+            "${type.label} saved for hole $hole."
         }
         termsStore = mockk(relaxed = true)
     }
@@ -184,7 +179,10 @@ class HoleContributionViewModelTest {
             assertEquals(3.5, submission.captured.accuracyMeters)
             assertEquals(36.568, submission.captured.latitude, 0.0)
             assertNull(vm.uiState.value.draftCoordinate)
-            assertEquals("Green location submitted for hole 7.", vm.uiState.value.statusMessage)
+            assertEquals("Green saved for hole 7.", vm.uiState.value.statusMessage)
+            assertNull(submission.captured.sessionId)
+            assertNull(submission.captured.strokes)
+            assertTrue(submission.captured.dedupKey.startsWith("course-1-7-green-nosession-"))
             assertNull(vm.uiState.value.presentedSheet)
         }
 

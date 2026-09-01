@@ -4,10 +4,20 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 enum class OpenGolfMomentType(val rawValue: String, val label: String) {
+    BREADCRUMB("breadcrumb", "Breadcrumb"),
+    SWING("swing", "Swing"),
+    PUTT("putt", "Putt"),
+    PIN("pin", "Pin"),
     TEE("tee", "Tee"),
     GREEN("green", "Green"),
-    PIN("pin", "Pin"),
-    BETA("beta", "Tip"),
+    SCORE("score", "Score"),
+    MESSAGE("message", "Note"),
+    ;
+
+    companion object {
+        val roundIngestibleCases: List<OpenGolfMomentType> =
+            listOf(BREADCRUMB, SWING, PUTT, SCORE, PIN, TEE, GREEN, MESSAGE)
+    }
 }
 
 enum class OpenGolfCorrectionField(val rawValue: String, val label: String) {
@@ -32,6 +42,8 @@ data class OpenGolfMomentSubmission(
     val playerId: String,
     val note: String?,
     val dedupKey: String,
+    val sessionId: String? = null,
+    val strokes: Int? = null,
 )
 
 data class OpenGolfCorrectionSubmission(
