@@ -50,14 +50,7 @@ data class OpenGolfMomentRecord(
     val payload: JsonObject? = null,
 ) {
     val displayNote: String?
-        get() {
-            val payload = payload ?: return null
-            for (key in listOf("note", "body", "message")) {
-                val text = payload.stringValue(key)?.trim()?.takeIf { it.isNotEmpty() }
-                if (text != null) return text
-            }
-            return null
-        }
+        get() = payload?.displayNoteText()
 
     val displayStrokes: Int?
         get() {
@@ -130,12 +123,15 @@ private data class OpenGolfMomentRecordWire(
 )
 
 private fun OpenGolfMomentRecordWire.toRecord(): OpenGolfMomentRecord {
-    val decodedPayload = (payload ?: JsonObject(emptyMap())).toMutableMap()
-    val topLevelNote = note?.trim().orEmpty()
-    if (topLevelNote.isNotEmpty() && decodedPayload.lacksDisplayNote()) {
-        decodedPayload["note"] = JsonPrimitive(topLevelNote)
-    }
-    val foldedPayload = decodedPayload.takeIf { it.isNotEmpty() }?.let { JsonObject(it) }
+    val payloadObject = payload ?: JsonObject(emptyMap())
+    val topLevelNote = note?.trim()?.takeIf { it.isNotEmpty() }
+    // Envelope `note` is used when payload has no player-facing text yet (`note` / `body` / `message`).
+    val foldedPayload =
+        if (topLevelNote != null && payloadObject.displayNoteText() == null) {
+            JsonObject(payloadObject + ("note" to JsonPrimitive(topLevelNote)))
+        } else {
+            payloadObject.takeIf { it.isNotEmpty() }
+        }
     return OpenGolfMomentRecord(
         serverId = serverId,
         momentType = momentType,
@@ -153,8 +149,15 @@ private fun OpenGolfMomentRecordWire.toRecord(): OpenGolfMomentRecord {
     )
 }
 
-private fun Map<String, JsonElement>.lacksDisplayNote(): Boolean =
-    this["note"] == null && this["body"] == null && this["message"] == null
+private val DISPLAY_NOTE_KEYS = listOf("note", "body", "message")
+
+private fun JsonObject.displayNoteText(): String? {
+    for (key in DISPLAY_NOTE_KEYS) {
+        val text = stringValue(key)?.trim()?.takeIf { it.isNotEmpty() }
+        if (text != null) return text
+    }
+    return null
+}
 
 private fun JsonObject.stringValue(key: String): String? {
     val primitive = this[key] as? JsonPrimitive ?: return null

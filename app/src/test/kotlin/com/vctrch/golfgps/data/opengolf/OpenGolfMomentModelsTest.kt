@@ -130,6 +130,33 @@ class OpenGolfMomentModelsTest {
     }
 
     @Test
+    fun decode_foldsTopLevelNoteWhenPayloadNoteIsBlank() {
+        val record =
+            OpenGolfMomentRecord.decode(
+                json,
+                json.parseToJsonElement(
+                    """{"moment_type":"swing","note":"fat contact","payload":{"hole":4,"note":"  "}}""",
+                ),
+            )
+        assertEquals("fat contact", record.displayNote)
+        assertEquals(JsonPrimitive("fat contact"), record.payload?.get("note"))
+    }
+
+    @Test
+    fun decode_keepsPayloadBodyOverTopLevelNote() {
+        val record =
+            OpenGolfMomentRecord.decode(
+                json,
+                json.parseToJsonElement(
+                    """{"moment_type":"message","note":"ignored","payload":{"body":"slow greens"}}""",
+                ),
+            )
+        assertEquals("slow greens", record.displayNote)
+        assertEquals(JsonPrimitive("slow greens"), record.payload?.get("body"))
+        assertEquals(null, record.payload?.get("note"))
+    }
+
+    @Test
     fun decode_doesNotRemapPlayerId() {
         val record =
             OpenGolfMomentRecord.decode(
