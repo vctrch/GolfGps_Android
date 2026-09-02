@@ -1,6 +1,9 @@
 package com.vctrch.golfgps.feature.map
 
+import android.content.res.Resources
+import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.drawable.BitmapDrawable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
@@ -49,6 +52,32 @@ fun OsmHoleMap(
     val frameKey =
         "${hole.number}:${hole.green.latitude},${hole.green.longitude}:" +
             "${hole.tee?.latitude},${hole.tee?.longitude}"
+    val density = context.resources.displayMetrics.density
+    val markerSizePx = remember(density) { HoleMapMarkerIcons.sizePx(density) }
+    val greenBitmap =
+        remember(hole.greenMappingConfidence, markerSizePx) {
+            HoleMapMarkerIcons.bitmap(
+                HoleMapMarkerKind.GREEN,
+                HoleMapMarkerPalette.greenFill(hole.greenMappingConfidence),
+                markerSizePx,
+            )
+        }
+    val teeBitmap =
+        remember(hole.teeMappingConfidence, markerSizePx) {
+            HoleMapMarkerIcons.bitmap(
+                HoleMapMarkerKind.TEE,
+                HoleMapMarkerPalette.teeFill(hole.teeMappingConfidence),
+                markerSizePx,
+            )
+        }
+    val playerBitmap =
+        remember(markerSizePx) {
+            HoleMapMarkerIcons.bitmap(
+                HoleMapMarkerKind.PLAYER,
+                HoleMapMarkerPalette.PLAYER_FILL,
+                markerSizePx,
+            )
+        }
 
     DisposableEffect(lifecycle) {
         val observer =
@@ -140,6 +169,7 @@ fun OsmHoleMap(
                     Marker(mapView).apply {
                         position = playerPoint
                         title = "You"
+                        applyOpaqueIcon(playerBitmap, context.resources)
                         setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                     },
                 )
@@ -148,7 +178,8 @@ fun OsmHoleMap(
             mapView.overlays.add(
                 Marker(mapView).apply {
                     position = greenPoint
-                    title = "Green"
+                    title = HoleMapMarkerPalette.greenTitle(hole.greenMappingConfidence)
+                    applyOpaqueIcon(greenBitmap, context.resources)
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                 },
             )
@@ -156,7 +187,8 @@ fun OsmHoleMap(
                 mapView.overlays.add(
                     Marker(mapView).apply {
                         position = it
-                        title = "Tee"
+                        title = hole.teeMappingConfidence.shortLabel
+                        applyOpaqueIcon(teeBitmap, context.resources)
                         setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                     },
                 )
@@ -200,3 +232,12 @@ fun OsmHoleMap(
 private const val MAP_PADDING_PX = 80
 private const val PLAYER_LINE_COLOR = 0xFF1B5E20.toInt()
 private const val HOLE_LINE_COLOR = 0xCCFFFFFF.toInt()
+
+private fun Marker.applyOpaqueIcon(
+    bitmap: Bitmap,
+    resources: Resources,
+) {
+    val drawable = BitmapDrawable(resources, bitmap)
+    drawable.setBounds(0, 0, bitmap.width, bitmap.height)
+    icon = drawable
+}
