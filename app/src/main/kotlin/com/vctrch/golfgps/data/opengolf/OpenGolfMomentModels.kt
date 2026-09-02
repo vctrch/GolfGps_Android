@@ -132,11 +132,7 @@ private data class OpenGolfMomentRecordWire(
 private fun OpenGolfMomentRecordWire.toRecord(): OpenGolfMomentRecord {
     val decodedPayload = (payload ?: JsonObject(emptyMap())).toMutableMap()
     val topLevelNote = note?.trim().orEmpty()
-    if (topLevelNote.isNotEmpty() &&
-        decodedPayload["note"] == null &&
-        decodedPayload["body"] == null &&
-        decodedPayload["message"] == null
-    ) {
+    if (topLevelNote.isNotEmpty() && decodedPayload.lacksDisplayNote()) {
         decodedPayload["note"] = JsonPrimitive(topLevelNote)
     }
     val foldedPayload = decodedPayload.takeIf { it.isNotEmpty() }?.let { JsonObject(it) }
@@ -156,6 +152,9 @@ private fun OpenGolfMomentRecordWire.toRecord(): OpenGolfMomentRecord {
         payload = foldedPayload,
     )
 }
+
+private fun Map<String, JsonElement>.lacksDisplayNote(): Boolean =
+    this["note"] == null && this["body"] == null && this["message"] == null
 
 private fun JsonObject.stringValue(key: String): String? {
     val primitive = this[key] as? JsonPrimitive ?: return null
