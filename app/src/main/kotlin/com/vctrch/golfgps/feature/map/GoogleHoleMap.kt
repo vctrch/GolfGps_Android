@@ -7,8 +7,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.maps.android.compose.CameraMoveStartedReason
@@ -44,6 +47,39 @@ fun GoogleHoleMap(
     // Optional markers still need a remembered state; unused when tee/player is null.
     val teeMarker = rememberUpdatedMarkerState(tee ?: green)
     val playerMarker = rememberUpdatedMarkerState(player ?: green)
+
+    val density = LocalContext.current.resources.displayMetrics.density
+    val markerSizePx = remember(density) { HoleMapMarkerIcons.sizePx(density) }
+    val greenIcon =
+        remember(hole.greenMappingConfidence, markerSizePx) {
+            BitmapDescriptorFactory.fromBitmap(
+                HoleMapMarkerIcons.bitmap(
+                    HoleMapMarkerKind.GREEN,
+                    HoleMapMarkerPalette.greenFill(hole.greenMappingConfidence),
+                    markerSizePx,
+                ),
+            )
+        }
+    val teeIcon =
+        remember(hole.teeMappingConfidence, markerSizePx) {
+            BitmapDescriptorFactory.fromBitmap(
+                HoleMapMarkerIcons.bitmap(
+                    HoleMapMarkerKind.TEE,
+                    HoleMapMarkerPalette.teeFill(hole.teeMappingConfidence),
+                    markerSizePx,
+                ),
+            )
+        }
+    val playerIcon =
+        remember(markerSizePx) {
+            BitmapDescriptorFactory.fromBitmap(
+                HoleMapMarkerIcons.bitmap(
+                    HoleMapMarkerKind.PLAYER,
+                    HoleMapMarkerPalette.PLAYER_FILL,
+                    markerSizePx,
+                ),
+            )
+        }
 
     val camera =
         rememberCameraPositionState {
@@ -90,20 +126,37 @@ fun GoogleHoleMap(
     ) {
         // The hole itself: tee -> green.
         tee?.let { Polyline(points = listOf(it, green), color = Color(0xCCFFFFFF), width = 4f) }
-        Marker(state = greenMarker, title = "Green")
+        Marker(
+            state = greenMarker,
+            title = HoleMapMarkerPalette.greenTitle(hole.greenMappingConfidence),
+            icon = greenIcon,
+            anchor = PIN_ANCHOR,
+        )
         if (tee != null) {
-            Marker(state = teeMarker, title = "Tee")
+            Marker(
+                state = teeMarker,
+                title = hole.teeMappingConfidence.shortLabel,
+                icon = teeIcon,
+                anchor = PIN_ANCHOR,
+            )
         }
         // The live shot: player -> green.
         player?.let {
             Polyline(points = listOf(it, green), color = Color(0xFFFFFFFF), width = 8f)
             Polyline(points = listOf(it, green), color = Color(0xFF1B5E20), width = 4f)
-            Marker(state = playerMarker, title = "You")
+            Marker(
+                state = playerMarker,
+                title = "You",
+                icon = playerIcon,
+                anchor = PLAYER_ANCHOR,
+            )
         }
     }
 }
 
 private const val BOUNDS_PADDING_PX = 180
+private val PIN_ANCHOR = Offset(0.5f, 1.0f)
+private val PLAYER_ANCHOR = Offset(0.5f, 0.5f)
 
 private fun MapDisplayStyle.toGoogleMapType(): MapType {
     return when (this) {

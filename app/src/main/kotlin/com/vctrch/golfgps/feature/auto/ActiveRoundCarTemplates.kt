@@ -3,6 +3,7 @@ package com.vctrch.golfgps.feature.auto
 import androidx.car.app.CarContext
 import androidx.car.app.model.Action
 import androidx.car.app.model.ActionStrip
+import androidx.car.app.model.CarColor
 import androidx.car.app.model.CarLocation
 import androidx.car.app.model.ItemList
 import androidx.car.app.model.Metadata
@@ -12,6 +13,8 @@ import androidx.car.app.model.PlaceMarker
 import androidx.car.app.model.Row
 import androidx.car.app.model.Template
 import com.vctrch.golfgps.R
+import com.vctrch.golfgps.domain.TeeMappingConfidence
+import com.vctrch.golfgps.domain.teeMappingConfidence
 import com.vctrch.golfgps.feature.auto.ActiveRoundSession.Companion.greenYardageLabel
 import com.vctrch.golfgps.feature.auto.ActiveRoundSession.Companion.poiPickerTitle
 import com.vctrch.golfgps.feature.auto.ActiveRoundSession.Companion.teeYardageLabel
@@ -43,7 +46,7 @@ object ActiveRoundCarTemplates {
                     Metadata.Builder()
                         .setPlace(
                             Place.Builder(CarLocation.create(hole.green.latitude, hole.green.longitude))
-                                .setMarker(PlaceMarker.Builder().setLabel("G").build())
+                                .setMarker(greenPlaceMarker())
                                 .build(),
                         )
                         .build(),
@@ -62,7 +65,7 @@ object ActiveRoundCarTemplates {
                         Metadata.Builder()
                             .setPlace(
                                 Place.Builder(CarLocation.create(tee.latitude, tee.longitude))
-                                    .setMarker(PlaceMarker.Builder().setLabel("T").build())
+                                    .setMarker(teePlaceMarker(hole.teeMappingConfidence))
                                     .build(),
                             )
                             .build(),
@@ -114,7 +117,7 @@ object ActiveRoundCarTemplates {
             .setItemList(itemListBuilder.build())
             .setAnchor(
                 Place.Builder(CarLocation.create(hole.green.latitude, hole.green.longitude))
-                    .setMarker(PlaceMarker.Builder().setLabel("G").build())
+                    .setMarker(greenPlaceMarker())
                     .build(),
             )
             .setCurrentLocationEnabled(true)
@@ -122,4 +125,28 @@ object ActiveRoundCarTemplates {
             .setOnContentRefreshListener { onRefresh() }
             .build()
     }
+}
+
+private fun greenPlaceMarker(): PlaceMarker =
+    PlaceMarker.Builder()
+        .setLabel("G")
+        .setColor(CarColor.GREEN)
+        .build()
+
+private fun teePlaceMarker(confidence: TeeMappingConfidence): PlaceMarker {
+    val color =
+        when (confidence) {
+            TeeMappingConfidence.MAPPED -> CarColor.BLUE
+            TeeMappingConfidence.MATCHED,
+            TeeMappingConfidence.FAIRWAY_DERIVED,
+            TeeMappingConfidence.ESTIMATED,
+            -> CarColor.YELLOW
+            TeeMappingConfidence.UNAVAILABLE,
+            TeeMappingConfidence.NOT_MAPPED,
+            -> CarColor.BLUE
+        }
+    return PlaceMarker.Builder()
+        .setLabel("T")
+        .setColor(color)
+        .build()
 }
