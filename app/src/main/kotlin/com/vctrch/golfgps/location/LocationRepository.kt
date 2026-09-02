@@ -10,6 +10,7 @@ import android.location.LocationManager
 import android.net.Uri
 import android.os.Build
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -109,6 +110,7 @@ class LocationRepository
                 val request =
                     LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1_000L)
                         .setMinUpdateIntervalMillis(500L)
+                        .setWaitForAccurateLocation(false)
                         .build()
 
                 val callback =
@@ -138,7 +140,7 @@ class LocationRepository
                             trySend(sample.toLatLng())
                         }
                     }
-                    fusedClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+                    fusedClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
                         .addOnSuccessListener { location ->
                             location?.let {
                                 val sample = it.toSample()
@@ -187,11 +189,21 @@ class LocationRepository
 
         private fun Location.toLatLng(): LatLng = LatLng(latitude, longitude)
 
-        private fun Location.toSample(): LocationSample =
-            LocationSample(
+        private fun Location.toSample(): LocationSample {
+            val elapsed = elapsedRealtimeNanos
+            val ageMs =
+                if (elapsed > 0L) {
+                    (SystemClock.elapsedRealtimeNanos() - elapsed) / 1_000_000L
+                } else {
+                    System.currentTimeMillis() - time
+                }
+            return LocationSample(
                 latitude = latitude,
                 longitude = longitude,
                 accuracyMeters = accuracy,
-                timeMillis = time,
+                // Normalize to wall-clock so age checks stay valid when Location.time is epoch 0
+                // or skewed vs the device clock (common with mock / fused last-known fixes).
+                timeMillis = System.currentTimeMillis() - ageMs.coerceAtLeast(0L),
             )
+        }
     }

@@ -219,4 +219,66 @@ class RoundViewModelTest {
             assertEquals(1, viewModel.uiState.value.selectedHoleNumber)
             assertEquals(loaded.summary, viewModel.uiState.value.lastSelectedCourse)
         }
+
+    @Test
+    fun heroYardage_usesTeeToPinWhenGpsIsMissing() {
+        val hole =
+            TestFixtures.holeTarget(
+                number = 1,
+                source = HoleTargetSource.OPEN_STREET_MAP,
+                tee = TestFixtures.sampleTee,
+                green = TestFixtures.sampleGreen,
+            )
+        val state =
+            RoundUiState(
+                loadedCourse = TestFixtures.loadedCourse().copy(holes = listOf(hole)),
+                selectedHoleNumber = 1,
+                userLocation = null,
+            )
+
+        assertEquals(RoundHeroYardage.TeeToPin(hole.holeLengthYards()!!), state.heroYardage())
+    }
+
+    @Test
+    fun heroYardage_usesFromYourLocationWhenPlayerIsOnTheHole() {
+        val hole =
+            TestFixtures.holeTarget(
+                number = 1,
+                source = HoleTargetSource.OPEN_STREET_MAP,
+                tee = TestFixtures.sampleTee,
+                green = TestFixtures.offset(northYards = 380.0),
+            )
+        val onHole = TestFixtures.offset(northYards = 190.0)
+        val state =
+            RoundUiState(
+                loadedCourse = TestFixtures.loadedCourse().copy(holes = listOf(hole)),
+                selectedHoleNumber = 1,
+                userLocation = onHole,
+            )
+
+        assertEquals(
+            RoundHeroYardage.FromYourLocation(hole.playerYardsToGreen(onHole)!!),
+            state.heroYardage(),
+        )
+    }
+
+    @Test
+    fun heroYardage_fallsBackToTeeToPinWhenGpsIsOffHole() {
+        val hole =
+            TestFixtures.holeTarget(
+                number = 1,
+                source = HoleTargetSource.OPEN_STREET_MAP,
+                tee = TestFixtures.sampleTee,
+                green = TestFixtures.offset(northYards = 380.0),
+            )
+        val farAway = TestFixtures.offset(northYards = 5_000.0)
+        val state =
+            RoundUiState(
+                loadedCourse = TestFixtures.loadedCourse().copy(holes = listOf(hole)),
+                selectedHoleNumber = 1,
+                userLocation = farAway,
+            )
+
+        assertEquals(RoundHeroYardage.TeeToPin(hole.holeLengthYards()!!), state.heroYardage())
+    }
 }

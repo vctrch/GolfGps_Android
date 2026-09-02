@@ -30,6 +30,7 @@ import com.google.android.gms.maps.model.LatLng as MapsLatLng
 fun GoogleHoleMap(
     hole: HoleTarget,
     userLocation: LatLng?,
+    locationAuthorized: Boolean = false,
     mapDisplayStyle: MapDisplayStyle,
     modifier: Modifier = Modifier,
     onCameraCenterChanged: (LatLng) -> Unit = {},
@@ -121,8 +122,16 @@ fun GoogleHoleMap(
     GoogleMap(
         modifier = modifier,
         cameraPositionState = camera,
-        properties = MapProperties(mapType = mapDisplayStyle.toGoogleMapType()),
-        uiSettings = MapUiSettings(zoomControlsEnabled = true, myLocationButtonEnabled = userLocation != null),
+        properties =
+            MapProperties(
+                mapType = mapDisplayStyle.toGoogleMapType(),
+                isMyLocationEnabled = locationAuthorized,
+            ),
+        uiSettings =
+            MapUiSettings(
+                zoomControlsEnabled = true,
+                myLocationButtonEnabled = locationAuthorized,
+            ),
     ) {
         // The hole itself: tee -> green.
         tee?.let { Polyline(points = listOf(it, green), color = Color(0xCCFFFFFF), width = 4f) }

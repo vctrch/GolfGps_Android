@@ -22,6 +22,7 @@ import com.vctrch.golfgps.ui.theme.GolfTheme
 fun HoleMapSection(
     hole: HoleTarget,
     userLocation: LatLng?,
+    locationAuthorized: Boolean = false,
     mapDisplayStyle: MapDisplayStyle,
     onMapDisplayStyleChange: (MapDisplayStyle) -> Unit,
     modifier: Modifier = Modifier,
@@ -51,6 +52,7 @@ fun HoleMapSection(
                     GoogleHoleMap(
                         hole = hole,
                         userLocation = userLocation,
+                        locationAuthorized = locationAuthorized,
                         mapDisplayStyle = mapDisplayStyle,
                         onCameraCenterChanged = { mapCenter = it },
                         modifier = Modifier.fillMaxSize(),
@@ -59,6 +61,7 @@ fun HoleMapSection(
                     OsmHoleMap(
                         hole = hole,
                         userLocation = userLocation,
+                        locationAuthorized = locationAuthorized,
                         mapDisplayStyle = mapDisplayStyle,
                         onCameraCenterChanged = { mapCenter = it },
                         modifier = Modifier.fillMaxSize(),
