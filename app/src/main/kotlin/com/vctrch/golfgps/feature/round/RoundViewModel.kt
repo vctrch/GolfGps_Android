@@ -70,9 +70,26 @@ data class RoundUiState(
         return hole.playerYardsToTee(location)
     }
 
+    /**
+     * Live GPS-to-pin when the player is on the hole; otherwise mapped tee-to-pin so yardage
+     * does not wait on a GPS fix that may never arrive off-course.
+     */
+    fun heroYardage(): RoundHeroYardage? {
+        val hole = currentHole ?: return null
+        distanceToGreen()?.let { return RoundHeroYardage.FromYourLocation(it) }
+        hole.holeLengthYards()?.let { return RoundHeroYardage.TeeToPin(it) }
+        return null
+    }
+
     companion object {
         const val MINIMUM_SEARCH_QUERY_LENGTH = 2
     }
+}
+
+sealed class RoundHeroYardage {
+    data class FromYourLocation(val yards: Int) : RoundHeroYardage()
+
+    data class TeeToPin(val yards: Int) : RoundHeroYardage()
 }
 
 @HiltViewModel

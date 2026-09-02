@@ -32,6 +32,7 @@ class ActiveRoundSession
             val userLocation: LatLng? = null,
             val yardsToGreen: Int? = null,
             val yardsToTee: Int? = null,
+            val teeToPinYards: Int? = null,
         )
 
         private val _snapshot = MutableStateFlow(Snapshot())
@@ -72,6 +73,7 @@ class ActiveRoundSession
                 if (hole != null && userLocation != null) hole.playerYardsToGreen(userLocation) else null
             val yardsToTee =
                 if (hole != null && userLocation != null) hole.playerYardsToTee(userLocation) else null
+            val teeToPinYards = hole?.holeLengthYards()
             _snapshot.update {
                 it.copy(
                     isRoundReady = loadedCourse != null && hole != null,
@@ -84,6 +86,7 @@ class ActiveRoundSession
                     userLocation = userLocation,
                     yardsToGreen = yardsToGreen,
                     yardsToTee = yardsToTee,
+                    teeToPinYards = teeToPinYards,
                 )
             }
         }
@@ -107,10 +110,15 @@ class ActiveRoundSession
                 greenDistance: Int?,
                 holeMapped: Boolean,
                 estimatedGreen: Boolean = false,
+                teeToPinYards: Int? = null,
             ): String {
                 if (greenDistance != null) {
                     val yards = GeoMath.formattedYardage(greenDistance)
-                    return if (estimatedGreen) "$yards yds to green (est.)" else "$yards yds to green"
+                    return if (estimatedGreen) "$yards yds to pin (est.)" else "$yards yds to pin"
+                }
+                if (teeToPinYards != null) {
+                    val yards = GeoMath.formattedYardage(teeToPinYards)
+                    return if (estimatedGreen) "$yards yds tee to pin (est.)" else "$yards yds tee to pin"
                 }
                 if (holeMapped) {
                     return if (estimatedGreen) "Estimated green · waiting for GPS" else "Waiting for GPS"
@@ -139,6 +147,7 @@ class ActiveRoundSession
                     greenDistance = yardsToGreen,
                     holeMapped = currentHole.hasReliableGreenPosition,
                     estimatedGreen = currentHole.showsEstimatedQualifier,
+                    teeToPinYards = teeToPinYards,
                 )
             }
 

@@ -132,6 +132,7 @@ fun ActiveRoundScreen(
             HoleMapSection(
                 hole = hole,
                 userLocation = state.userLocation,
+                locationAuthorized = state.locationStatus.isAuthorized,
                 mapDisplayStyle = mapDisplayStyle,
                 onMapDisplayStyleChange = onMapDisplayStyleChange,
                 isPlaceMode = contribution.isPlaceMode,
@@ -323,46 +324,36 @@ private fun YardageHero(
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 HoleMappingConfidenceRow(hole = hole, heroStyle = true)
 
-                val liveYards = state.distanceToGreen()
-                when {
-                    liveYards != null -> {
-                        HeroYardage(yards = liveYards, estimated = hole.showsEstimatedQualifier)
-                    }
-                    state.userLocation == null -> {
-                        Text(
-                            "Waiting for GPS",
-                            color = Color.White.copy(alpha = 0.95f),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold,
+                when (val hero = state.heroYardage()) {
+                    is RoundHeroYardage.FromYourLocation -> {
+                        HeroYardage(
+                            yards = hero.yards,
+                            estimated = hole.showsEstimatedQualifier,
+                            caption = "yds to pin",
+                            detail = "from your location",
                         )
                     }
-                    state.currentHoleNeedsGPS -> {
-                        Text(
-                            "—",
-                            color = Color.White.copy(alpha = 0.85f),
-                            style = MaterialTheme.typography.displayLarge,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            "Hole map still loading",
-                            color = Color.White.copy(alpha = 0.9f),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
+                    is RoundHeroYardage.TeeToPin -> {
+                        HeroYardage(
+                            yards = hero.yards,
+                            estimated = hole.showsEstimatedQualifier,
+                            caption = "yds",
+                            detail = "Tee to pin",
                         )
                     }
-                    else -> {
-                        val holeLength = hole.holeLengthYards()
-                        if (holeLength != null) {
+                    null -> {
+                        if (state.currentHoleNeedsGPS) {
                             Text(
-                                "${GeoMath.formattedYardage(holeLength)} yds",
-                                color = Color.White,
-                                style = MaterialTheme.typography.displaySmall,
+                                "—",
+                                color = Color.White.copy(alpha = 0.85f),
+                                style = MaterialTheme.typography.displayLarge,
                                 fontWeight = FontWeight.Bold,
                             )
                             Text(
-                                "Tee to green — move to the course for live yardage",
-                                color = Color.White.copy(alpha = 0.85f),
-                                style = MaterialTheme.typography.bodyMedium,
+                                "Hole map still loading",
+                                color = Color.White.copy(alpha = 0.9f),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium,
                             )
                         } else {
                             Text(
@@ -496,6 +487,8 @@ private fun LocationBanner(
 private fun HeroYardage(
     yards: Int,
     estimated: Boolean,
+    caption: String,
+    detail: String? = null,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -506,11 +499,19 @@ private fun HeroYardage(
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                "yds to green",
+                caption,
                 color = Color.White.copy(alpha = 0.85f),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
+        if (detail != null) {
+            Text(
+                detail,
+                color = Color.White.copy(alpha = 0.8f),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
             )
         }
         if (estimated) {

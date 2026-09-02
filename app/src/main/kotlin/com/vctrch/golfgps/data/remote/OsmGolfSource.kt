@@ -89,7 +89,8 @@ class OverpassGolfSource(
                 Stage(uniqueAnchors(listOf(courseCenter, queryCoordinate)), 3_000),
                 Stage(
                     uniqueAnchors(
-                        listOf(courseCenter, queryCoordinate) + (userLocation?.let { listOf(it) } ?: emptyList()),
+                        listOf(courseCenter, queryCoordinate) +
+                            (effectivePlayer?.let { listOf(it) } ?: emptyList()),
                     ),
                     AROUND_RADIUS_METERS,
                 ),

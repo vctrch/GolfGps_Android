@@ -19,11 +19,14 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.views.overlay.TilesOverlay
+import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
+import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 
 @Composable
 fun OsmHoleMap(
     hole: HoleTarget,
     userLocation: LatLng?,
+    locationAuthorized: Boolean = false,
     mapDisplayStyle: MapDisplayStyle,
     modifier: Modifier = Modifier,
     onCameraCenterChanged: (LatLng) -> Unit = {},
@@ -34,6 +37,7 @@ fun OsmHoleMap(
     val lastFrameKey = remember { mutableStateOf<String?>(null) }
     val labelsOverlayHolder = remember { mutableStateOf<TilesOverlay?>(null) }
     val labelsStyleHolder = remember { mutableStateOf<MapDisplayStyle?>(null) }
+    val myLocationOverlayHolder = remember { mutableStateOf<MyLocationNewOverlay?>(null) }
     val greenPoint = remember(hole.number, hole.green) { GeoPoint(hole.green.latitude, hole.green.longitude) }
     val teePoint = remember(hole.number, hole.tee) { hole.tee?.let { GeoPoint(it.latitude, it.longitude) } }
     // Only draw the player when they're realistically on this hole, so a stale or faraway fix
@@ -70,11 +74,18 @@ fun OsmHoleMap(
                 setTileSource(mapDisplayStyle.toOsmTileSource())
                 controller.setZoom(16.0)
                 controller.setCenter(greenPoint)
+                val myLocation =
+                    MyLocationNewOverlay(GpsMyLocationProvider(context), this).apply {
+                        if (locationAuthorized) enableMyLocation()
+                    }
+                overlays.add(myLocation)
+                myLocationOverlayHolder.value = myLocation
                 mapViewHolder.value = this
             }
         },
         update = { mapView ->
             mapView.setTileSource(mapDisplayStyle.toOsmTileSource())
+            val myLocation = myLocationOverlayHolder.value
             mapView.overlays.removeAll { it !is TilesOverlay }
 
             val labelsSource = mapDisplayStyle.osmLabelsOverlaySource()
@@ -151,6 +162,11 @@ fun OsmHoleMap(
                 )
             }
 
+            if (myLocation != null) {
+                if (locationAuthorized) myLocation.enableMyLocation() else myLocation.disableMyLocation()
+                mapView.overlays.add(myLocation)
+            }
+
             // Frame tee/green when the hole mapping changes — not on every GPS tick (preserves pinch-zoom).
             if (lastFrameKey.value != frameKey) {
                 lastFrameKey.value = frameKey
@@ -171,6 +187,8 @@ fun OsmHoleMap(
             mapView.invalidate()
         },
         onRelease = { mapView ->
+            myLocationOverlayHolder.value?.disableMyLocation()
+            myLocationOverlayHolder.value = null
             labelsOverlayHolder.value?.onDetach(mapView)
             labelsOverlayHolder.value = null
             mapView.onPause()

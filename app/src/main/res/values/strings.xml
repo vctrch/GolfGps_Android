@@ -14,7 +14,7 @@
     <string name="support_card_title">Support Community Golf</string>
     <string name="support_card_subtitle">Community Golf is free! An optional tip helps cover ongoing development and maintenance costs.</string>
     <string name="location_rationale_title">Location for live yardage</string>
-    <string name="location_rationale_body">Community Golf uses your location while you play to show distance to the green and tee. Location is used only on this device for yardage and is not required to search for courses.</string>
+    <string name="location_rationale_body">Community Golf uses your location while you play to show live distance to the pin. Mapped tee-to-pin yardage is available without GPS. Location is used only on this device and is not required to search for courses.</string>
     <string name="location_rationale_continue">Continue</string>
     <string name="location_rationale_not_now">Not now</string>
     <string-array name="android_auto_hosts_allowlist">

@@ -68,7 +68,7 @@ fun DataSourcesInfoCard(modifier: Modifier = Modifier) {
             title = "How we pick a green",
             items =
                 listOf(
-                    "When someone has marked a pin or green for that hole, we use it.",
+                    "When someone has marked a pin or green for that hole, we use it — pin first.",
                     "Otherwise we follow the fairway line on the map and place the green at the far end of the hole.",
                     "If a hole is missing on the map, we estimate its green between neighboring mapped holes.",
                 ),
@@ -87,9 +87,9 @@ fun DataSourcesInfoCard(modifier: Modifier = Modifier) {
             items =
                 listOf(
                     "Some courses are mapped hole by hole; others only have a handful of fairways drawn.",
-                    "Estimated holes can still show yardage to green, " +
+                    "Estimated holes can still show tee-to-pin yardage, " +
                         "but they may be less exact than fully mapped ones.",
-                    "Your yardage also depends on phone signal, open sky, and precise location.",
+                    "Live yardage from your location needs GPS, open sky, and precise location.",
                 ),
         )
         InfoSection(

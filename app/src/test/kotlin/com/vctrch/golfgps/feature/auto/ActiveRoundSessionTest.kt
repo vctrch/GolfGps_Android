@@ -1,6 +1,7 @@
 package com.vctrch.golfgps.feature.auto
 
 import com.vctrch.golfgps.domain.HoleTargetSource
+import com.vctrch.golfgps.feature.auto.ActiveRoundSession.Companion.greenYardageLabel
 import com.vctrch.golfgps.testing.TestFixtures
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -11,12 +12,16 @@ class ActiveRoundSessionTest {
     @Test
     fun yardageDetail_formatsLiveAndPendingStates() {
         assertEquals(
-            "142 yds to green",
+            "142 yds to pin",
             ActiveRoundSession.yardageDetail(142, holeMapped = true),
         )
         assertEquals(
-            "142 yds to green (est.)",
+            "142 yds to pin (est.)",
             ActiveRoundSession.yardageDetail(142, holeMapped = true, estimatedGreen = true),
+        )
+        assertEquals(
+            "380 yds tee to pin",
+            ActiveRoundSession.yardageDetail(null, holeMapped = true, teeToPinYards = 380),
         )
         assertEquals(
             "Waiting for GPS",
@@ -50,6 +55,7 @@ class ActiveRoundSessionTest {
         assertEquals(1, snapshot.selectedHoleNumber)
         assertEquals(onHole, snapshot.userLocation)
         assertTrue((snapshot.yardsToGreen ?: -1) >= 0)
+        assertEquals(hole.holeLengthYards(), snapshot.teeToPinYards)
     }
 
     @Test
@@ -68,6 +74,29 @@ class ActiveRoundSessionTest {
         session.publish(course, selectedHoleNumber = 1, userLocation = onHole)
 
         assertEquals(null, session.snapshot.value.yardsToGreen)
+        assertEquals(fallback.holeLengthYards(), session.snapshot.value.teeToPinYards)
+    }
+
+    @Test
+    fun publish_exposesTeeToPinWhenGpsIsMissing() {
+        val session = ActiveRoundSession()
+        val hole =
+            TestFixtures.holeTarget(
+                number = 1,
+                source = HoleTargetSource.OPEN_STREET_MAP,
+                tee = TestFixtures.sampleTee,
+                green = TestFixtures.offset(northYards = 150.0),
+            )
+        val course = TestFixtures.loadedCourse().copy(holes = listOf(hole))
+
+        session.publish(course, selectedHoleNumber = 1, userLocation = null)
+
+        assertEquals(null, session.snapshot.value.yardsToGreen)
+        assertEquals(hole.holeLengthYards(), session.snapshot.value.teeToPinYards)
+        assertEquals(
+            "${hole.holeLengthYards()} yds tee to pin",
+            session.snapshot.value.greenYardageLabel(),
+        )
     }
 
     @Test
